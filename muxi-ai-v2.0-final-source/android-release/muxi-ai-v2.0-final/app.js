@@ -3,7 +3,7 @@ import { app } from "/tmp/muxi-nitron-runtime/node_modules/nitron/dist/index.js"
 app.init({
   name: "暮曦 AI",
   packageId: "com.muxiai.assistant",
-  version: "muxi-ai-v2.0-final",
+  version: "2.0.1",
   entry: "index.html",
   orientation: "portrait",
   statusBar: true,
