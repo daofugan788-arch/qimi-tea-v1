@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#15111f">
+  <meta name="description" content="暮曦 AI V2.0——支持文字、语音、长期记忆和安全本地自动化的手机端助手。">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./assets/icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
+  <link rel="stylesheet" href="./css/styles.css">
+  <link rel="stylesheet" href="./css/v1.1.css">
+  <link rel="stylesheet" href="./css/automation.css">
+  <title>暮曦 AI</title>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <button class="brand" type="button" data-nav="home" aria-label="返回主页"><img src="./assets/avatar.svg" alt=""><span><b id="brand-name">暮曦</b><small>AI VOICE ASSISTANT</small></span></button>
+      <span class="status-chip" id="network-status"><i></i><span>在线</span></span>
+    </header>
+    <main>
+      <section class="page active" id="page-home" data-page="home">
+        <div class="hero-copy"><p class="eyebrow" id="date-label"></p><h1><span id="greeting">晚上好</span><br><em id="user-greeting">我在这里。</em></h1><p>想说什么都可以。暮曦会记住重要的事，也会慢慢更懂你。</p></div>
+        <div class="orb-wrap" aria-hidden="true"><div class="orb-glow"></div><div class="orb"><span></span><span></span><span></span></div></div>
+        <button class="voice-main" id="home-voice-button" type="button"><span class="mic-icon"></span><span><b>和暮曦说话</b><small id="voice-hint">轻触开始语音</small></span></button>
+        <div class="home-grid">
+          <button class="info-card" type="button" data-nav="chat"><span class="card-icon warm">聊</span><span><small>最近对话</small><b id="chat-count">0 条消息</b></span><i>›</i></button>
+          <button class="info-card" type="button" data-nav="memory"><span class="card-icon violet">忆</span><span><small>长期记忆</small><b id="memory-count">0 条记忆</b></span><i>›</i></button>
+        </div>
+      </section>
+      <section class="page chat-page" id="page-chat" data-page="chat">
+        <div class="page-heading compact"><div><p class="eyebrow">CONVERSATION</p><h2>和暮曦聊天</h2></div><button class="round-button" id="new-chat-button" type="button" aria-label="新对话">＋</button></div>
+        <div class="message-list" id="message-list" aria-live="polite"></div>
+        <div class="typing hidden" id="typing-indicator"><i></i><i></i><i></i></div>
+        <form class="composer" id="chat-form"><button class="composer-mic" id="chat-voice-button" type="button" aria-label="语音输入"><span class="mic-icon"></span></button><textarea id="message-input" rows="1" maxlength="1000" placeholder="和暮曦说点什么……"></textarea><button class="send-button" type="submit" aria-label="发送消息">↑</button></form>
+      </section>
+      <section class="page" id="page-memory" data-page="memory">
+        <div class="page-heading"><div><p class="eyebrow">LONG-TERM MEMORY</p><h2>暮曦记得的事</h2></div><button class="round-button" id="add-memory-button" type="button">＋</button></div>
+        <p class="section-intro">你可以说“记住，我喜欢青桔柠檬茶”，暮曦会自动保存。所有记忆默认只保存在这台手机。</p>
+        <div class="filter-row" id="memory-filters"><button class="active" type="button" data-filter="all">全部</button><button type="button" data-filter="identity">关于我</button><button type="button" data-filter="preference">偏好</button><button type="button" data-filter="note">其他</button></div>
+        <div class="memory-list" id="memory-list"></div>
+        <div class="empty-state hidden" id="memory-empty"><span>✦</span><h3>还没有长期记忆</h3><p>聊几句，或者手动添加一条吧。</p></div>
+      </section>
+      <section class="page automation-page" id="page-automation" data-page="automation">
+        <div class="page-heading"><div><p class="eyebrow">LOCAL AUTOMATION</p><h2>自动化</h2></div><span class="automation-local-badge">本地规则</span></div>
+        <p class="section-intro">把固定指令解析成安全步骤。网页内动作可以执行；Android 系统动作只生成请求或命令卡片，不会假装已经控制手机。</p>
+
+        <form class="automation-command-form" id="automation-command-form">
+          <label for="automation-command-input">输入本地指令</label>
+          <textarea id="automation-command-input" rows="3" maxlength="300" placeholder="例如：启动暮曦"></textarea>
+          <button type="submit">解析指令</button>
+        </form>
+
+        <section class="automation-section">
+          <div class="automation-section-heading"><div><small>QUICK TEMPLATES</small><h3>常用自动化模板</h3></div></div>
+          <div class="automation-template-grid" id="automation-template-list"></div>
+        </section>
+
+        <section class="automation-result hidden" id="automation-result" aria-live="polite">
+          <div class="automation-section-heading"><div><small>PARSED PLAN</small><h3>解析结果</h3></div><span id="automation-risk-badge" class="risk-badge low">LOW</span></div>
+          <div class="automation-intent-summary" id="automation-intent-summary"></div>
+          <p class="automation-risk-note" id="automation-risk-note"></p>
+          <div class="automation-action-list" id="automation-action-list"></div>
+          <div class="automation-result-actions">
+            <button class="automation-run-button" id="automation-run-button" type="button">执行</button>
+            <button class="automation-cancel-button" id="automation-cancel-button" type="button">取消</button>
+          </div>
+        </section>
+
+        <section class="automation-section" id="automation-history-section">
+          <div class="automation-section-heading"><div><small>EXECUTION LOG</small><h3>执行日志</h3></div><button class="automation-clear-history" id="automation-clear-history" type="button">清空</button></div>
+          <div class="automation-history-list" id="automation-history-list"></div>
+          <div class="automation-history-empty" id="automation-history-empty">还没有自动化记录</div>
+        </section>
+      </section>
+      <section class="page" id="page-settings" data-page="settings">
+        <div class="page-heading"><div><p class="eyebrow">SETTINGS</p><h2>设置</h2></div></div>
+        <div class="settings-group"><h3>称呼</h3><label class="field"><span>你的名字</span><input id="user-name-input" type="text" maxlength="20" placeholder="还没有设置"></label><label class="field"><span>助手名字</span><input id="assistant-name-input" type="text" maxlength="20" value="暮曦"></label></div>
+        <div class="settings-group"><h3>语音与记忆</h3><label class="switch-row"><span><b>自动语音播报</b><small>暮曦回复后自动读出来</small></span><input id="auto-speak-toggle" type="checkbox"><i></i></label><label class="switch-row"><span><b>自动提取记忆</b><small>从对话中识别你的称呼和偏好</small></span><input id="auto-memory-toggle" type="checkbox" checked><i></i></label></div>
+        <div class="settings-group"><h3>AI 设置</h3><label class="switch-row"><span><b>启用远程模型</b><small>关闭时使用内置离线对话</small></span><input id="remote-ai-toggle" type="checkbox"><i></i></label><label class="field stacked"><span>Base URL</span><input id="ai-base-url-input" type="url" inputmode="url" placeholder="例如：https://api.deepseek.com"></label><label class="field stacked"><span>API Key</span><input id="ai-api-key-input" type="password" autocomplete="off" spellcheck="false" placeholder="只保存在当前手机"></label><label class="field stacked"><span>模型名称</span><input id="ai-model-input" type="text" autocomplete="off" spellcheck="false" placeholder="例如：deepseek-chat"></label><label class="field"><span>上下文消息数</span><input id="context-limit-input" type="number" min="2" max="100" step="1" value="20"></label><label class="field stacked"><span>旧版安全代理地址（可选）</span><input id="api-endpoint-input" type="url" inputmode="url" placeholder="例如：https://你的域名/api/chat"></label><p class="field-note">兼容 OpenAI Chat Completions 规范。API Key 将保存在当前手机的浏览器本地配置中。</p><div class="ai-action-row"><button id="save-ai-settings-button" type="button">保存设置</button><button id="test-api-button" type="button">测试连接</button></div><p class="api-test-status" id="api-test-status">尚未测试</p></div>
+        <div class="settings-group action-list"><h3>数据</h3><button id="clear-chat-button" type="button"><span>删除聊天记录</span><i>›</i></button><button id="export-button" type="button"><span>导出记忆和对话</span><i>›</i></button><button id="import-button" type="button"><span>导入备份</span><i>›</i></button><input class="hidden" id="import-file" type="file" accept="application/json"><button class="danger" id="clear-button" type="button"><span>清除本机全部数据</span><i>›</i></button></div>
+        <button class="install-button hidden" id="install-button" type="button">安装“暮曦 AI”到手机</button><p class="version">暮曦 AI V2.0 · LOCAL AUTOMATION</p>
+      </section>
+    </main>
+    <nav class="bottom-nav"><button class="active" type="button" data-nav="home"><span>⌂</span><small>主页</small></button><button type="button" data-nav="chat"><span>◌</span><small>聊天</small></button><button type="button" data-nav="memory"><span>◇</span><small>记忆</small></button><button type="button" data-nav="automation"><span>⌁</span><small>自动化</small></button><button type="button" data-nav="settings"><span>⚙</span><small>设置</small></button></nav>
+  </div>
+  <dialog id="memory-dialog"><form method="dialog" id="memory-form"><div class="dialog-heading"><h3>添加一条记忆</h3><button value="cancel" type="button" id="close-memory-dialog">×</button></div><label class="field stacked"><span>内容</span><textarea id="memory-content-input" rows="4" maxlength="200" placeholder="例如：我喜欢喝鸭屎香。" required></textarea></label><label class="field stacked"><span>类型</span><select id="memory-type-input"><option value="preference">偏好</option><option value="identity">关于我</option><option value="note">其他</option></select></label><button class="primary-button" type="submit">保存记忆</button></form></dialog>
+  <dialog id="automation-confirm-dialog"><form method="dialog"><div class="dialog-heading"><h3>确认自动化任务</h3><button value="cancel" type="button" id="close-automation-confirm">×</button></div><p class="automation-confirm-text" id="automation-confirm-text"></p><div class="automation-confirm-actions"><button value="cancel" type="button" id="cancel-automation-confirm">取消</button><button value="default" type="button" id="confirm-automation-run">确认并继续</button></div></form></dialog>
+  <div class="toast" id="toast" role="status"></div>
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>

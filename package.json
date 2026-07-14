@@ -1,0 +1,1 @@
+{"name":"muxi-ai-server","version":"1.0.0","private":true,"type":"module","scripts":{"start":"node server.mjs"},"engines":{"node":">=20"}}
