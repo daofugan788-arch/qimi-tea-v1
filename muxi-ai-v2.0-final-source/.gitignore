@@ -1,0 +1,11 @@
+.env
+server/.env
+node_modules/
+dist/
+deliverables/
+*.apk
+*.aab
+*.jks
+*.keystore
+*.log
+

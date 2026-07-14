@@ -1,0 +1,7 @@
+{
+  "app": "暮曦 AI",
+  "releaseId": "muxi-ai-v2.0-final",
+  "packageId": "com.muxiai.assistant",
+  "buildType": "android-test",
+  "webAssetsEmbedded": true
+}

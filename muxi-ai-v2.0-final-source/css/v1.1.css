@@ -1,0 +1,43 @@
+.ai-action-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 0 15px 12px;
+}
+
+.ai-action-row button {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 12px;
+}
+
+.ai-action-row button:first-child {
+  border-color: transparent;
+  background: linear-gradient(135deg, #efb07d, #d77b8d);
+  color: #2a1925;
+  font-weight: 700;
+}
+
+.api-test-status {
+  min-height: 18px;
+  margin: 0;
+  padding: 0 15px 13px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.api-test-status.success { color: #7ac6a1; }
+.api-test-status.error { color: var(--danger); }
+.message.error .bubble { border-color: rgba(242, 141, 152, 0.35); color: #e9c6cb; }
+
+.retry-button {
+  margin-top: 8px;
+  border: 1px solid rgba(243, 165, 109, 0.28);
+  border-radius: 999px;
+  background: rgba(243, 165, 109, 0.08);
+  color: #edb18c;
+  padding: 6px 11px;
+  font-size: 11px;
+}

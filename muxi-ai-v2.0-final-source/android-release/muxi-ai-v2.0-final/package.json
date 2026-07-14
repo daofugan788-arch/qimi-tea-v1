@@ -1,0 +1,7 @@
+{
+  "name": "muxi-ai-v2.0-final-android-test",
+  "version": "2.0.0",
+  "releaseId": "muxi-ai-v2.0-final",
+  "private": true,
+  "type": "module"
+}
