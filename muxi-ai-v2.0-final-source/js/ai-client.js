@@ -231,6 +231,11 @@ export class AIClient{
     if(["memoryRecall","memoryWrite","memoryDelete"].includes(context.effectiveIntent)&&/^(那|那么)?(怎么删|如何删|能删除吗|在哪里删|删掉它)[呀啊吗呢。！!？?\s]*$/.test(value)){
       return choose(["可以删除。打开下方“记忆”页面，找到对应内容后点右侧 ×。","去“记忆”页面点那条内容右边的 ×，就能删掉。"]);
     }
+    if(["memoryWrite","userNameRecall"].includes(context.effectiveIntent)&&/^(?:那|那么)?(?:(?:我)?(?:叫)?(?:什么|啥)(?:名字)?|(?:我的)?名字呢)[呀啊吗。！!？?\s]*$/.test(value)){
+      const knownName=this.knownUserName(settings,memories);
+      if(knownName)return choose([`你叫${knownName}。`,`我记得，你的名字是${knownName}。`,`刚才记下了，你叫${knownName}。`]);
+      return choose(["你还没有告诉我你的名字。可以说“我叫……”。","我现在还不知道你的名字，告诉我一次就好。"]);
+    }
 
     if(["settings","voiceSettings","microphone"].includes(context.effectiveIntent)&&/^(在哪里|哪儿|怎么开|怎么弄|然后呢|那呢|找不到)[呀啊吗呢。！!？?\s]*$/.test(value)){
       if(context.effectiveIntent==="voiceSettings")return choose(["点右下角“设置”，在“语音与记忆”里找到“自动语音播报”开关。","入口在右下角“设置”，打开“自动语音播报”就行。"]);

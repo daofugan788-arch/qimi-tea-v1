@@ -2,6 +2,7 @@
 
 ## muxi-ai-v2.0-final - 2026-07-14
 
+- 修复姓名查询误写入记忆，并支持“我叫什么名字”“叫什么名字”“名字呢”等连续对话问法
 - 新增本地 `IntentParser`，使用关键词和正则识别固定自动化指令
 - 新增 `ActionPlanner`、`ActionValidator` 与统一 Action JSON 格式
 - 新增 `ActionExecutor`，只执行网页内动作；Android 系统动作标记为需要外部执行器

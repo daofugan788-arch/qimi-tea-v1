@@ -26,6 +26,15 @@ const rememberedReply=client.localReply("我叫什么名字",[
 ]);
 assert.match(rememberedReply,/南宫远/);
 
+const contextualNameReply=client.localReply("叫什么名字",[
+  {type:"identity",content:"我的称呼是南宫远"}
+],settings,[
+  {role:"user",content:"我叫南宫远"},
+  {role:"assistant",content:"好，我记住了。"},
+  {role:"user",content:"叫什么名字"}
+]);
+assert.match(contextualNameReply,/南宫远/);
+
 const configuredReply=client.localReply("我叫什么名字",[],{
   ...settings,
   userName:"小南"
@@ -43,6 +52,6 @@ assert.doesNotMatch(invalidMemoryReply,/你叫(?:什么|什么名字)/);
 
 console.log(JSON.stringify({
   suite:"local-dialogue",
-  cases:8,
+  cases:9,
   status:"passed"
 },null,2));
