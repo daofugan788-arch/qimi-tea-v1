@@ -16,6 +16,17 @@ function clean(value, maxLength = 300) {
     .slice(0, maxLength);
 }
 
+function cleanGeneratedContent(value, maxLength = 6000) {
+  return String(value || "")
+    .replace(/\u0000/g, "")
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .map((line) => line.replace(/[\t ]+/g, " ").trimEnd())
+    .join("\n")
+    .trim()
+    .slice(0, maxLength);
+}
+
 function splitHighlights(value) {
   return clean(value, 500)
     .split(/[、，,；;|。]+/)
@@ -110,7 +121,7 @@ async function generateRemoteContent(input, config, signal) {
     });
     if (!response.ok) throw new Error(`模型接口返回 ${response.status}`);
     const data = await response.json();
-    const content = clean(data?.choices?.[0]?.message?.content, 6000);
+    const content = cleanGeneratedContent(data?.choices?.[0]?.message?.content, 6000);
     if (!content) throw new Error("模型没有返回有效内容");
     return {
       content,
