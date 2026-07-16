@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#fff8ee">
+  <meta name="description" content="Hammer AI：一分钟生成可直接发布的卖货文案。">
+  <title>Hammer AI｜卖货文案助手</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main class="app-shell">
+    <section class="screen active" data-screen="home" aria-hidden="false">
+      <header class="brand"><span class="brand-mark">H</span><b>Hammer AI</b><em>V0.5</em></header>
+      <div class="hero">
+        <p class="eyebrow">卖货老板的文案助手</p>
+        <h1>填一次商品信息<br><span>马上生成卖货文案</span></h1>
+        <p class="hero-text">朋友圈、小红书、抖音和淘宝详情都能写。不会写提示词，也不用学习。</p>
+        <button class="primary-button hero-button" type="button" data-start>免费生成一篇</button>
+        <p class="trust-line">不登录 · 约1分钟完成 · 一键复制发布</p>
+      </div>
+
+      <section class="how-it-works" aria-label="使用步骤">
+        <div><i>1</i><span><b>填商品</b><small>名称、价格和卖点</small></span></div>
+        <div><i>2</i><span><b>选平台</b><small>自动匹配内容结构</small></span></div>
+        <div><i>3</i><span><b>复制发布</b><small>检查后直接使用</small></span></div>
+      </section>
+
+      <section class="example-section">
+        <div class="section-heading"><p>不知道怎么填？</p><h2>用真实商品试试看</h2></div>
+        <button class="example-card" type="button" data-example="tea"><span>凤凰单丛茶</span><small>128元 · 广东产地，香气明显</small><i>试用此案例 →</i></button>
+        <button class="example-card" type="button" data-example="date"><span>新疆大枣</span><small>59元 · 肉厚甜度高</small><i>试用此案例 →</i></button>
+      </section>
+    </section>
+
+    <section class="screen" data-screen="form" aria-hidden="true">
+      <header class="screen-header"><button class="back-button" type="button" data-back-home aria-label="返回">←</button><div><small>第 1 步，共 2 步</small><b>告诉我你卖什么</b></div></header>
+      <form id="product-form" novalidate>
+        <label class="field"><span>商品名称 <em>必填</em></span><input id="product-name" type="text" maxlength="60" placeholder="例如：凤凰单丛茶" autocomplete="off"></label>
+        <label class="field"><span>商品价格</span><input id="product-price" type="text" maxlength="30" placeholder="例如：128元" inputmode="decimal"></label>
+        <label class="field"><span>商品卖点 <em>必填</em></span><textarea id="product-highlights" rows="4" maxlength="300" placeholder="例如：广东产地、香气明显、耐冲泡"></textarea><small>多个卖点用逗号隔开</small></label>
+        <label class="field"><span>适合哪些客户</span><input id="target-audience" type="text" maxlength="100" placeholder="例如：喜欢喝茶的人"></label>
+
+        <fieldset class="platform-field"><legend>准备发到哪里？</legend><div class="platform-grid">
+          <label><input type="radio" name="platform" value="wechat" checked><span><b>微信朋友圈</b><small>自然成交文案</small></span></label>
+          <label><input type="radio" name="platform" value="xiaohongshu"><span><b>小红书</b><small>标题＋体验分享</small></span></label>
+          <label><input type="radio" name="platform" value="douyin"><span><b>抖音</b><small>30秒口播脚本</small></span></label>
+          <label><input type="radio" name="platform" value="taobao"><span><b>淘宝详情</b><small>卖点详情结构</small></span></label>
+        </div></fieldset>
+
+        <p class="form-error" id="form-error" role="alert"></p>
+        <button class="primary-button" type="submit">生成卖货内容</button>
+        <p class="privacy-note">商品草稿只保存在当前浏览器；默认体验不会上传资料。</p>
+      </form>
+    </section>
+
+    <section class="screen generating-screen" data-screen="generating" aria-hidden="true">
+      <div class="loader" aria-hidden="true"><span></span><span></span><span></span></div>
+      <h2>正在整理卖点</h2>
+      <p>马上生成一篇可以直接复制的内容……</p>
+      <button id="cancel-generation" class="text-button" type="button">取消生成</button>
+    </section>
+
+    <section class="screen" data-screen="result" aria-hidden="true">
+      <header class="screen-header result-header"><button class="back-button" id="edit-button" type="button" aria-label="返回修改">←</button><div><small>生成完成</small><b>这篇内容可以发布了</b></div></header>
+      <article class="result-card">
+        <div class="result-meta"><span id="result-platform"></span><small id="result-product"></small></div>
+        <pre id="result-content"></pre>
+      </article>
+      <p class="result-notice" id="result-notice"></p>
+      <button class="primary-button copy-button" id="copy-button" type="button">一键复制全部内容</button>
+      <div class="result-actions"><button id="edit-button-secondary" type="button">返回修改</button><button id="new-button" type="button">换一个商品</button></div>
+    </section>
+  </main>
+  <div class="toast" id="toast" role="status"></div>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
