@@ -2,6 +2,8 @@
 
 面向普通微信卖货商家的移动端网页版内容助手。
 
+首页价值说明：上传商品，1分钟生成朋友圈、小红书、短视频卖货内容。
+
 核心流程：
 
 ```text
@@ -36,6 +38,10 @@ python3 -m http.server 8787
 ```text
 http://127.0.0.1:8787
 ```
+
+## Vercel 部署
+
+将本目录设为 Vercel 的 Root Directory，Framework Preset 选择 Other，保持默认构建设置即可上线。
 
 ## AI 配置
 
