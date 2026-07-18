@@ -160,3 +160,76 @@ test("选品 Agent 可以对商品库候选项排序并输出优先测试商品"
   assert.ok(completed.result.rankings[0].score >= completed.result.rankings[1].score);
   assert.ok(completed.result.testPlan.length >= 3);
 });
+
+test("任务链在没有商品时安全暂停并说明所需能力", async () => {
+  const storage = new MemoryStorage();
+  const agent = createCommerceAgent({ storage, stepDelay: 0 });
+  const chain = await agent.runTaskChain("帮我今天赚100块");
+
+  assert.equal(chain.status, "BLOCKED");
+  assert.equal(chain.currentStepIndex, 0);
+  assert.equal(chain.blocked.actionType, "NEED_PRODUCTS");
+  assert.match(chain.blocked.reason, /Browser Agent 尚未接入/);
+  assert.equal(agent.getChains().length, 1);
+});
+
+test("任务链可自动筛选商品并推进到发布等待点", async () => {
+  const storage = new MemoryStorage();
+  const agent = createCommerceAgent({ storage, stepDelay: 0 });
+  await agent.runProductAnalysis({
+    name: "便携收纳袋", cost: 4, price: 19.9, shipping: 3, platformFee: 1,
+    note: "小件、轻、不易坏、竞争小",
+  });
+  const chain = await agent.runTaskChain("帮我今天卖一个商品");
+
+  assert.equal(chain.status, "BLOCKED");
+  assert.equal(chain.blocked.actionType, "CONFIRM_PUBLISH");
+  assert.equal(chain.currentStepIndex, 4);
+  assert.ok(chain.context.outputs["chain.content.generate"].title);
+  assert.equal(chain.steps[0].status, "SUCCESS");
+  assert.equal(chain.steps[3].status, "SUCCESS");
+});
+
+test("任务链恢复后能记录成交利润并完成今日汇报", async () => {
+  const storage = new MemoryStorage();
+  const agent = createCommerceAgent({ storage, stepDelay: 0 });
+  await agent.runProductAnalysis({
+    name: "便携收纳袋", cost: 4, price: 19.9, shipping: 3, platformFee: 1,
+    note: "小件、轻、不易坏、竞争小",
+  });
+  let chain = await agent.runTaskChain("帮我今天赚10块");
+  chain = await agent.resumeTaskChain(chain.id, { published: true });
+  assert.equal(chain.status, "BLOCKED");
+  assert.equal(chain.blocked.actionType, "WAIT_SALE_RESULT");
+
+  chain = await agent.resumeTaskChain(chain.id, {
+    saleResult: { quantity: 1, salePrice: 19.9 },
+  });
+  assert.equal(chain.status, "SUCCESS");
+  assert.equal(chain.result.quantity, 1);
+  assert.equal(chain.result.revenue, 19.9);
+  assert.equal(chain.result.profit, 11.9);
+  assert.equal(chain.result.target, 10);
+  assert.equal(chain.result.targetReached, true);
+  assert.equal(agent.getSales().length, 1);
+});
+
+test("利润不达标时任务链会自动放弃并继续寻找下一个商品", async () => {
+  const storage = new MemoryStorage();
+  const agent = createCommerceAgent({ storage, stepDelay: 0 });
+  agent.productStore.saveAnalysis(
+    { name: "亏损候选", cost: 20, price: 18, shipping: 3, platformFee: 0 },
+    { profit: { net: -5, rate: -27.78 }, score: { total: 99 }, recommendation: { label: "测试数据" } },
+  );
+  agent.productStore.saveAnalysis(
+    { name: "可卖候选", cost: 5, price: 20, shipping: 3, platformFee: 1 },
+    { profit: { net: 11, rate: 55 }, score: { total: 80 }, recommendation: { label: "适合测试" } },
+  );
+  const chain = await agent.runTaskChain("帮我卖一个商品");
+
+  assert.equal(chain.status, "BLOCKED");
+  assert.equal(chain.blocked.actionType, "CONFIRM_PUBLISH");
+  assert.equal(chain.context.attempts.length, 1);
+  assert.equal(chain.context.attempts[0].productName, "亏损候选");
+  assert.equal(chain.context.outputs["chain.profit.screen"].product.name, "可卖候选");
+});
