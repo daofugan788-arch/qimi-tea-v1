@@ -30,6 +30,7 @@ export class AgentExecutor {
         const output = await this.registry.execute(step.tool, {
           goal: task.goal,
           product: task.product || null,
+          products: task.products || null,
         }, context);
         context.outputs[step.tool] = output;
         const completedSteps = current.steps.map((item) => (
