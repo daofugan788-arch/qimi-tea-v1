@@ -4,20 +4,21 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#fff8ee">
-  <meta name="description" content="上传商品，1分钟生成朋友圈、小红书、短视频卖货内容。">
+  <meta name="description" content="告诉 Agent 你卖什么，1分钟生成朋友圈、小红书、短视频卖货内容。">
   <title>Hammer AI｜卖货文案助手</title>
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
   <main class="app-shell">
     <section class="screen active" data-screen="home" aria-hidden="false">
-      <header class="brand"><span class="brand-mark">H</span><b>Hammer AI</b><em>V0.7</em></header>
+      <header class="brand"><span class="brand-mark">H</span><b>Hammer AI</b><em>V0.8</em></header>
       <div class="hero">
         <p class="eyebrow">卖货老板的文案助手</p>
-        <h1>上传商品，1分钟生成<br><span>朋友圈、小红书、短视频卖货内容</span></h1>
-        <p class="hero-text">填写名称、价格和卖点，马上得到可以复制发布的内容。不用学习提示词。</p>
-        <button class="primary-button hero-button" type="button" data-start>免费生成一篇</button>
-        <p class="trust-line">首篇免费 · 不登录 · 一键复制发布</p>
+        <h1>告诉 Agent 你卖什么，1分钟生成<br><span>朋友圈、小红书、短视频卖货内容</span></h1>
+        <p class="hero-text">直接告诉 Agent 你卖什么，它会主动问清楚，再帮你生成可以发布的内容。</p>
+        <button class="primary-button hero-button" id="agent-start-button" type="button" data-start-agent>和 Agent 开始卖货</button>
+        <button class="manual-entry-button" type="button" data-start>我想自己填写表单</button>
+        <p class="trust-line">首篇免费 · 不登录 · Agent 主动完成</p>
       </div>
 
       <section class="how-it-works" aria-label="使用步骤">
@@ -28,9 +29,35 @@
 
       <section class="example-section">
         <div class="section-heading"><p>不知道怎么填？</p><h2>用真实商品试试看</h2></div>
-        <button class="example-card" type="button" data-example="tea"><span>凤凰单丛茶</span><small>128元 · 广东产地，香气明显</small><i>试用此案例 →</i></button>
-        <button class="example-card" type="button" data-example="date"><span>新疆大枣</span><small>59元 · 肉厚甜度高</small><i>试用此案例 →</i></button>
+        <button class="example-card" type="button" data-agent-example="tea"><span>凤凰单丛茶</span><small>128元 · 广东产地，香气明显</small><i>交给 Agent →</i></button>
+        <button class="example-card" type="button" data-agent-example="date"><span>新疆大枣</span><small>59元 · 肉厚甜度高</small><i>交给 Agent →</i></button>
       </section>
+    </section>
+
+    <section class="screen agent-screen" data-screen="agent" aria-hidden="true">
+      <header class="screen-header agent-header"><button class="back-button" id="agent-back-button" type="button" aria-label="返回首页">←</button><div><small><span class="online-dot"></span> Agent 在线</small><b>让我们把商品卖出去</b></div></header>
+      <div class="agent-memory-bar"><span>记忆</span><p id="agent-memory-status">正在准备你的卖货资料</p></div>
+      <section class="agent-chat" id="agent-messages" aria-live="polite"></section>
+      <div class="agent-quick-replies" id="agent-quick-replies" aria-label="快捷回答"></div>
+
+      <article class="agent-result" id="agent-result" hidden>
+        <div class="agent-result-heading"><span id="agent-result-platform"></span><small id="agent-result-product"></small></div>
+        <pre id="agent-result-content"></pre>
+        <p id="agent-result-notice"></p>
+        <button class="primary-button" id="agent-copy-button" type="button">一键复制发布</button>
+        <div class="agent-revision-grid">
+          <button type="button" data-agent-revise="口语一点">更口语</button>
+          <button type="button" data-agent-revise="短一点">短一点</button>
+          <button type="button" data-agent-revise="强调价格">强调价格</button>
+          <button type="button" id="agent-change-platform">换平台</button>
+        </div>
+        <button class="agent-new-task" id="agent-new-task" type="button">卖另一个商品</button>
+      </article>
+
+      <form class="agent-composer" id="agent-composer">
+        <input id="agent-input" type="text" maxlength="300" autocomplete="off" placeholder="输入商品名称…" aria-label="给 Agent 发消息">
+        <button id="agent-send-button" type="submit" aria-label="发送">发送</button>
+      </form>
     </section>
 
     <section class="screen" data-screen="form" aria-hidden="true">
