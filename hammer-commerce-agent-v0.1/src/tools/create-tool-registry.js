@@ -9,6 +9,7 @@ import { productScoreTool } from "./product-score-tool.js";
 import { selectionPrepareTool } from "./selection-prepare-tool.js";
 import { productCompareTool } from "./product-compare-tool.js";
 import { createChainTools } from "./chain-tools.js";
+import { productQuickCaptureTool } from "./product-quick-capture-tool.js";
 
 export function createToolRegistry(dependencies = {}) {
   const registry = new ToolRegistry()
@@ -16,6 +17,7 @@ export function createToolRegistry(dependencies = {}) {
     .register(scopeDefineTool)
     .register(executionPlanTool)
     .register(productNormalizeTool)
+    .register(productQuickCaptureTool)
     .register(new ProfitCalculatorTool())
     .register(productScoreTool)
     .register(selectionPrepareTool)
