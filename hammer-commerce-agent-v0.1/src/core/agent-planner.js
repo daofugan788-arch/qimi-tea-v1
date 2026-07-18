@@ -15,10 +15,20 @@ const PRODUCT_STEP_TEMPLATES = Object.freeze([
   { tool: "report.compose", title: "生成商业分析报告" },
 ]);
 
+const SELECTION_STEP_TEMPLATES = Object.freeze([
+  { tool: "selection.prepare", title: "读取候选商品数据" },
+  { tool: "product.compare", title: "对比利润、评分与风险" },
+  { tool: "report.compose", title: "生成选品优先级报告" },
+]);
+
 export class AgentPlanner {
   createPlan(task) {
     if (!task?.goal) throw new Error("任务缺少用户目标");
-    const templates = task.type === "PRODUCT_ANALYSIS" ? PRODUCT_STEP_TEMPLATES : GOAL_STEP_TEMPLATES;
+    const templates = task.type === "PRODUCT_ANALYSIS"
+      ? PRODUCT_STEP_TEMPLATES
+      : task.type === "PRODUCT_COMPARISON"
+        ? SELECTION_STEP_TEMPLATES
+        : GOAL_STEP_TEMPLATES;
     return templates.map((template, index) => ({
       id: `${task.id}-S${index + 1}`,
       index,
