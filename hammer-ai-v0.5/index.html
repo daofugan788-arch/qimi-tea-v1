@@ -11,13 +11,13 @@
 <body>
   <main class="app-shell">
     <section class="screen active" data-screen="home" aria-hidden="false">
-      <header class="brand"><span class="brand-mark">H</span><b>Hammer AI</b><em>V0.5</em></header>
+      <header class="brand"><span class="brand-mark">H</span><b>Hammer AI</b><em>V0.6</em></header>
       <div class="hero">
         <p class="eyebrow">卖货老板的文案助手</p>
         <h1>上传商品，1分钟生成<br><span>朋友圈、小红书、短视频卖货内容</span></h1>
         <p class="hero-text">填写名称、价格和卖点，马上得到可以复制发布的内容。不用学习提示词。</p>
         <button class="primary-button hero-button" type="button" data-start>免费生成一篇</button>
-        <p class="trust-line">不登录 · 约1分钟完成 · 一键复制发布</p>
+        <p class="trust-line">首篇免费 · 不登录 · 一键复制发布</p>
       </div>
 
       <section class="how-it-works" aria-label="使用步骤">
@@ -70,6 +70,34 @@
       <p class="result-notice" id="result-notice"></p>
       <button class="primary-button copy-button" id="copy-button" type="button">一键复制全部内容</button>
       <div class="result-actions"><button id="edit-button-secondary" type="button">返回修改</button><button id="new-button" type="button">换一个商品</button></div>
+      <section class="upgrade-card" id="upgrade-card">
+        <span>首篇免费体验已完成</span>
+        <h2>继续生成更多卖货内容</h2>
+        <p>查看商家内测方案，朋友圈、小红书、抖音和淘宝内容都能继续生成。</p>
+        <button id="view-pricing-button" type="button">查看开通方案 →</button>
+      </section>
+    </section>
+
+    <section class="screen" data-screen="pricing" aria-hidden="true">
+      <header class="screen-header"><button class="back-button" id="pricing-back-button" type="button" aria-label="返回">←</button><div><small>商家内测</small><b>继续使用 Hammer AI</b></div></header>
+      <section class="pricing-intro">
+        <p class="eyebrow">付费意向验证</p>
+        <h1>每天少写文案，<br><span>把时间留给卖货</span></h1>
+        <p>第一次生成永久免费。需要继续使用时，再申请开通。</p>
+      </section>
+      <section class="price-card">
+        <div class="plan-heading"><span>商家内测版</span><em>限时内测</em></div>
+        <div class="price-line"><b>¥19.9</b><small>/ 月</small></div>
+        <ul>
+          <li>朋友圈、小红书、抖音、淘宝内容</li>
+          <li>填写商品后直接生成，不用写提示词</li>
+          <li>手机打开即用，一键复制发布</li>
+        </ul>
+        <button class="primary-button" id="request-access-button" type="button">申请开通内测</button>
+        <button class="copy-request-button" id="copy-request-button" type="button">复制开通申请</button>
+        <p class="interest-status" id="interest-status">点击后把申请信息发给给你链接的人即可。</p>
+      </section>
+      <button class="pricing-home-button" id="pricing-home-button" type="button">暂不开通，返回首页</button>
     </section>
   </main>
   <div class="toast" id="toast" role="status"></div>
