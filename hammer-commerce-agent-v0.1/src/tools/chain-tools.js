@@ -39,9 +39,10 @@ export const chainProfitScreenTool = {
     if (!product) throw new Error("没有可分析的候选商品");
     const viable = product.profit > 0 && product.profitRate >= 20 && product.score >= 50;
     if (!viable) {
+      const discoveryStep = runtime.chain.steps.findIndex((step) => step.tool === "chain.product.discover");
       return {
         outcome: TOOL_OUTCOME.RETRY,
-        resetToStep: 0,
+        resetToStep: Math.max(0, discoveryStep),
         data: {
           product,
           reason: product.profit <= 0 ? "没有销售利润" : product.profitRate < 20 ? "利润率低于20%" : "商品评分低于50分",
