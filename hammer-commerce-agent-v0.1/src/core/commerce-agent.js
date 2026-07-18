@@ -40,6 +40,18 @@ export class CommerceAgent {
     return completed;
   }
 
+  async runProductComparison(productIds, onUpdate = () => {}) {
+    const products = this.productStore.getByIds(productIds);
+    if (products.length < 2) throw new Error("至少选择 2 个商品进行对比");
+    const task = this.createTask(`对比 ${products.length} 个候选商品，选出优先测试项`, {
+      type: "PRODUCT_COMPARISON",
+      productIds: products.map((product) => product.id),
+      products,
+    });
+    onUpdate(task);
+    return this.executeTask(task, onUpdate);
+  }
+
   getHistory() {
     return this.store.list();
   }
