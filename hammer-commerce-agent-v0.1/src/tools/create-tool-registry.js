@@ -10,6 +10,7 @@ import { selectionPrepareTool } from "./selection-prepare-tool.js";
 import { productCompareTool } from "./product-compare-tool.js";
 import { createChainTools } from "./chain-tools.js";
 import { productQuickCaptureTool } from "./product-quick-capture-tool.js";
+import { createBrowserTools } from "./browser-tools.js";
 
 export function createToolRegistry(dependencies = {}) {
   const registry = new ToolRegistry()
@@ -24,5 +25,6 @@ export function createToolRegistry(dependencies = {}) {
     .register(productCompareTool)
     .register(reportComposeTool);
   createChainTools(dependencies).forEach((tool) => registry.register(tool));
+  createBrowserTools(dependencies).forEach((tool) => registry.register(tool));
   return registry;
 }
