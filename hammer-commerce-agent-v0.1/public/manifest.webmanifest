@@ -1,7 +1,7 @@
 {
   "name": "Hammer Commerce Agent",
   "short_name": "Hammer Agent",
-  "description": "自动推进选品、利润、发布准备、成交记录和日报任务链的 AI 电商员工",
+  "description": "尽量用一句指令完成商业任务的 Autonomous Commerce Agent",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
