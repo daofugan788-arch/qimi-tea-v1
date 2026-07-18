@@ -8,9 +8,10 @@ import { ProfitCalculatorTool } from "./profit-calculator-tool.js";
 import { productScoreTool } from "./product-score-tool.js";
 import { selectionPrepareTool } from "./selection-prepare-tool.js";
 import { productCompareTool } from "./product-compare-tool.js";
+import { createChainTools } from "./chain-tools.js";
 
-export function createToolRegistry() {
-  return new ToolRegistry()
+export function createToolRegistry(dependencies = {}) {
+  const registry = new ToolRegistry()
     .register(goalAnalyzeTool)
     .register(scopeDefineTool)
     .register(executionPlanTool)
@@ -20,4 +21,6 @@ export function createToolRegistry() {
     .register(selectionPrepareTool)
     .register(productCompareTool)
     .register(reportComposeTool);
+  createChainTools(dependencies).forEach((tool) => registry.register(tool));
+  return registry;
 }
