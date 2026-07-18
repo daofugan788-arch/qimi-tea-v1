@@ -1,11 +1,18 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createCommerceAgent } from "./core/create-agent.js";
 import { STEP_STATUS, TASK_STATUS } from "./core/task-status.js";
+import { CHAIN_STATUS, CHAIN_STEP_STATUS } from "./core/chain-status.js";
 
 const EXAMPLES = [
   "找适合闲鱼卖的高利润小商品",
   "帮我筛选利润率30%以上的商品",
   "规划一个低成本个人卖货测试",
+];
+
+const CHAIN_EXAMPLES = [
+  "帮我今天卖一个商品",
+  "帮我今天赚100块",
+  "从商品库找一个利润合适的商品并准备发布",
 ];
 
 const EMPTY_PRODUCT = Object.freeze({
@@ -22,6 +29,15 @@ const STATUS_TEXT = {
   [TASK_STATUS.RUNNING]: "正在分析",
   [TASK_STATUS.SUCCESS]: "分析完成",
   [TASK_STATUS.FAILED]: "分析失败",
+};
+
+const CHAIN_STATUS_TEXT = {
+  [CHAIN_STATUS.WAITING]: "等待执行",
+  [CHAIN_STATUS.RUNNING]: "自动执行中",
+  [CHAIN_STATUS.BLOCKED]: "等待继续条件",
+  [CHAIN_STATUS.SUCCESS]: "任务链完成",
+  [CHAIN_STATUS.FAILED]: "任务链失败",
+  [CHAIN_STATUS.PAUSED]: "已暂停",
 };
 
 const DIMENSION_LABELS = {
@@ -68,6 +84,64 @@ function TaskProgress({ task }) {
       )}
       {task.error && <p className="error-message">{task.error}</p>}
     </section>
+  );
+}
+
+function ChainProgress({ chain }) {
+  if (!chain) return null;
+  return (
+    <section className="task-card chain-card" aria-live="polite">
+      <div className="task-heading">
+        <div><span className={`status-dot status-${chain.status.toLowerCase()}`} /><b>{CHAIN_STATUS_TEXT[chain.status]}</b></div>
+        <small>{chain.id}</small>
+      </div>
+      <p className="task-goal">“{chain.goal}”</p>
+      {chain.context?.attempts?.length > 0 && <p className="retry-note">Agent 已自动放弃 {chain.context.attempts.length} 个不合格商品，并继续寻找。</p>}
+      <ol className="step-list chain-step-list">
+        {chain.steps.map((step) => (
+          <li key={step.id} className={`step-${step.status.toLowerCase()}`}>
+            <span>{step.status === CHAIN_STEP_STATUS.SUCCESS ? "✓" : step.status === CHAIN_STEP_STATUS.BLOCKED ? "!" : step.index + 1}</span>
+            <div><b>{step.title}</b><small>{step.status === CHAIN_STEP_STATUS.RUNNING ? "Agent 正在自动处理…" : step.status === CHAIN_STEP_STATUS.SUCCESS ? "已完成" : step.status === CHAIN_STEP_STATUS.BLOCKED ? "等待条件后自动继续" : step.description}</small></div>
+          </li>
+        ))}
+      </ol>
+      {chain.error && <p className="error-message">{chain.error}</p>}
+    </section>
+  );
+}
+
+function ChainBlockedAction({ chain, running, saleResult, setSaleResult, onResume, onGoProduct, onCopy }) {
+  if (chain?.status !== CHAIN_STATUS.BLOCKED || !chain.blocked) return null;
+  const { actionType, reason, data } = chain.blocked;
+  if (actionType === "NEED_PRODUCTS" || actionType === "NO_VIABLE_PRODUCTS") {
+    return (
+      <section className="chain-action-card"><span>任务链需要新条件</span><h2>{actionType === "NEED_PRODUCTS" ? "还没有候选商品" : "现有商品都不合格"}</h2><p>{reason}</p><div className="chain-action-buttons"><button type="button" className="secondary" onClick={onGoProduct}>添加候选商品</button><button type="button" onClick={() => onResume({ productsUpdated: true })} disabled={running}>已添加，继续 →</button></div></section>
+    );
+  }
+  if (actionType === "CONFIRM_PUBLISH") {
+    return (
+      <section className="chain-action-card"><span>发布资料已准备</span><h2>等待发布确认</h2><p>{reason}</p>{data?.title && <div className="publish-preview"><b>{data.title}</b><p>{data.description}</p></div>}<div className="chain-action-buttons"><button type="button" className="secondary" onClick={() => onCopy(data)}>复制发布资料</button><button type="button" onClick={() => onResume({ published: true })} disabled={running}>我已发布，继续 →</button></div></section>
+    );
+  }
+  if (actionType === "WAIT_SALE_RESULT") {
+    return (
+      <section className="chain-action-card"><span>任务正在等待</span><h2>填写真实成交结果</h2><p>{reason}</p><div className="sale-result-fields"><label><span>成交单价</span><div><i>¥</i><input value={saleResult.salePrice} onChange={(event) => setSaleResult((current) => ({ ...current, salePrice: event.target.value }))} inputMode="decimal" /></div></label><label><span>成交数量</span><input value={saleResult.quantity} onChange={(event) => setSaleResult((current) => ({ ...current, quantity: event.target.value }))} inputMode="numeric" /></label></div><div className="chain-action-buttons"><button type="button" className="secondary" onClick={() => onResume({ saleResult: { quantity: 0, salePrice: 0 } })} disabled={running}>今天未成交</button><button type="button" onClick={() => onResume({ saleResult })} disabled={running || !saleResult.salePrice}>记录成交并继续 →</button></div></section>
+    );
+  }
+  return <section className="chain-action-card"><h2>任务链已暂停</h2><p>{reason}</p></section>;
+}
+
+function ChainFinalReport({ chain }) {
+  if (chain?.status !== CHAIN_STATUS.SUCCESS || !chain.result) return null;
+  const report = chain.result;
+  return (
+    <section className="report-card chain-final-report"><div className="report-kicker">OWNER REPORT · V0.4</div><h2>今日任务汇报</h2><p className="report-summary">{report.summary}</p><div className="chain-result-list"><div><span>成交数量</span><b>{report.quantity} 件</b></div><div><span>成交收入</span><b>{money(report.revenue)}</b></div><div><span>今日利润</span><b>{money(report.profit)}</b></div></div>{report.target !== null && <p className={`target-result ${report.targetReached ? "reached" : ""}`}>{report.targetReached ? "✓ 已达到" : "尚未达到"} {money(report.target)} 利润目标</p>}<div className="report-section"><h3>Agent 下一步</h3><p>{report.nextAction}</p></div></section>
+  );
+}
+
+function ChainHome({ goal, setGoal, running, error, onRun, chains, onOpenChain }) {
+  return (
+    <><section className="hero chain-hero"><div className="agent-badge"><span /> 自动任务链</div><h1>只说目标，<br /><em>Agent 自己推进。</em></h1><p>自动寻找候选、判断利润、准备发布资料、等待成交并汇报利润。</p><div className="capability-row"><span>连续任务</span><span>自动跳过失败项</span><span>断点恢复</span><span>主人日报</span></div></section><section className="chain-command-card"><label htmlFor="chain-goal">今天想让 Agent 做什么？</label><textarea id="chain-goal" value={goal} onChange={(event) => setGoal(event.target.value)} rows="3" maxLength="300" placeholder="例如：帮我今天赚100块" disabled={running} />{error && <p className="input-error">{error}</p>}<button type="button" onClick={() => onRun(goal)} disabled={running || !goal.trim()}>{running ? <><span className="button-loader" /> 正在启动任务链</> : <>开始自动执行 <span>→</span></>}</button></section><section className="examples chain-examples"><small>一句话示例</small>{CHAIN_EXAMPLES.map((example) => <button key={example} type="button" onClick={() => onRun(example)}>{example}<span>↗</span></button>)}</section>{chains.length > 0 && <section className="recent-chains"><small>最近任务链</small>{chains.slice(0, 3).map((chain) => <button key={chain.id} type="button" onClick={() => onOpenChain(chain)}><span className={`status-dot status-${chain.status.toLowerCase()}`} /><div><b>{chain.goal}</b><small>{CHAIN_STATUS_TEXT[chain.status]} · {formatTime(chain.createdAt)}</small></div><i>›</i></button>)}</section>}</>
   );
 }
 
@@ -278,17 +352,21 @@ function ProductPanel({ products, onClose, onClear }) {
 
 export default function App() {
   const agent = useMemo(() => createCommerceAgent({ stepDelay: 300 }), []);
-  const [mode, setMode] = useState("product");
+  const [mode, setMode] = useState("chain");
   const [product, setProduct] = useState({ ...EMPTY_PRODUCT });
   const [selectedIds, setSelectedIds] = useState([]);
   const [goal, setGoal] = useState("");
+  const [chainGoal, setChainGoal] = useState("");
   const [currentTask, setCurrentTask] = useState(null);
+  const [currentChain, setCurrentChain] = useState(() => agent.getChains().find((chain) => [CHAIN_STATUS.BLOCKED, CHAIN_STATUS.RUNNING, CHAIN_STATUS.WAITING].includes(chain.status)) || null);
   const [history, setHistory] = useState(() => agent.getHistory());
+  const [chains, setChains] = useState(() => agent.getChains());
   const [products, setProducts] = useState(() => agent.getProducts());
   const [historyOpen, setHistoryOpen] = useState(false);
   const [productsOpen, setProductsOpen] = useState(false);
   const [running, setRunning] = useState(false);
   const [inputError, setInputError] = useState("");
+  const [saleResult, setSaleResult] = useState({ salePrice: "", quantity: "1" });
   const [installEvent, setInstallEvent] = useState(null);
 
   useEffect(() => {
@@ -297,9 +375,24 @@ export default function App() {
     return () => window.removeEventListener("beforeinstallprompt", handleInstall);
   }, []);
 
+  useEffect(() => {
+    if (currentChain?.blocked?.actionType !== "WAIT_SALE_RESULT" || saleResult.salePrice) return;
+    const selectedProduct = currentChain.context?.outputs?.["chain.profit.screen"]?.product;
+    if (selectedProduct?.price) setSaleResult({ salePrice: String(selectedProduct.price), quantity: "1" });
+  }, [currentChain, saleResult.salePrice]);
+
   function handleUpdate(updatedTask) {
     setCurrentTask({ ...updatedTask });
     setHistory(agent.getHistory());
+  }
+
+  function handleChainUpdate(updatedChain) {
+    setCurrentChain({ ...updatedChain });
+    setChains(agent.getChains());
+    if (updatedChain.blocked?.actionType === "WAIT_SALE_RESULT" && !saleResult.salePrice) {
+      const selectedProduct = updatedChain.context?.outputs?.["chain.profit.screen"]?.product;
+      if (selectedProduct?.price) setSaleResult({ salePrice: String(selectedProduct.price), quantity: "1" });
+    }
   }
 
   async function analyzeProduct(event) {
@@ -354,6 +447,37 @@ export default function App() {
     finally { setHistory(agent.getHistory()); setRunning(false); }
   }
 
+  async function runChain(selectedGoal = chainGoal) {
+    const value = String(selectedGoal || "").trim();
+    if (!value) return setInputError("先告诉 Agent 今天要完成什么目标。");
+    if (running) return;
+    setMode("chain");
+    setChainGoal(value);
+    setInputError("");
+    setRunning(true);
+    setCurrentTask(null);
+    setCurrentChain(null);
+    try { await agent.runTaskChain(value, handleChainUpdate); }
+    catch (error) { setInputError(error?.message || "任务链启动失败。"); }
+    finally { setChains(agent.getChains()); setRunning(false); }
+  }
+
+  async function resumeChain(signals) {
+    if (!currentChain || running) return;
+    setRunning(true);
+    setInputError("");
+    try { await agent.resumeTaskChain(currentChain.id, signals, handleChainUpdate); }
+    catch (error) { setInputError(error?.message || "任务链恢复失败。"); }
+    finally { setChains(agent.getChains()); setRunning(false); }
+  }
+
+  async function copyPublishData(data) {
+    const text = `${data?.title || ""}\n\n${data?.description || ""}`.trim();
+    if (!text) return;
+    try { await navigator.clipboard.writeText(text); }
+    catch { setInputError("复制失败，请长按发布内容复制。"); }
+  }
+
   async function installApp() {
     if (!installEvent) return;
     await installEvent.prompt();
@@ -361,6 +485,7 @@ export default function App() {
   }
 
   function selectHistory(task) {
+    setCurrentChain(null);
     setCurrentTask(task);
     setMode(task.type === "PRODUCT_ANALYSIS" ? "product" : task.type === "PRODUCT_COMPARISON" ? "selection" : "goal");
     setHistoryOpen(false);
@@ -369,8 +494,10 @@ export default function App() {
 
   function startNew() {
     setCurrentTask(null);
+    setCurrentChain(null);
     setInputError("");
-    if (mode === "product") setProduct({ ...EMPTY_PRODUCT });
+    if (mode === "chain") { setChainGoal(""); setSaleResult({ salePrice: "", quantity: "1" }); }
+    else if (mode === "product") setProduct({ ...EMPTY_PRODUCT });
     else if (mode === "selection") setSelectedIds([]);
     else setGoal("");
   }
@@ -378,7 +505,7 @@ export default function App() {
   return (
     <main className={`app-shell mode-${mode}`}>
       <header className="topbar">
-        <div className="brand"><span>H</span><div><b>Hammer Commerce</b><small>Agent V0.3</small></div></div>
+        <div className="brand"><span>H</span><div><b>Hammer Commerce</b><small>Agent V0.4</small></div></div>
         <div className="top-actions">
           {installEvent && <button type="button" onClick={installApp}>安装</button>}
           <button type="button" onClick={() => setProductsOpen(true)}>商品 <i>{products.length}</i></button>
@@ -386,31 +513,38 @@ export default function App() {
         </div>
       </header>
 
-      {!currentTask && (
+      {!currentTask && !currentChain && (
         <nav className="mode-tabs" aria-label="Agent 模式">
+          <button className={mode === "chain" ? "active" : ""} type="button" onClick={() => { setMode("chain"); setInputError(""); }}>自动任务</button>
           <button className={mode === "product" ? "active" : ""} type="button" onClick={() => { setMode("product"); setInputError(""); }}>商品分析</button>
           <button className={mode === "selection" ? "active" : ""} type="button" onClick={() => { setMode("selection"); setInputError(""); }}>选品对比</button>
           <button className={mode === "goal" ? "active" : ""} type="button" onClick={() => { setMode("goal"); setInputError(""); }}>目标任务</button>
         </nav>
       )}
 
-      {!currentTask && mode === "product" && (
+      {!currentTask && !currentChain && mode === "product" && (
         <><section className="hero product-hero"><div className="agent-badge"><span /> AI 选品员工</div><h1>输入成本，<br /><em>判断能不能卖。</em></h1><p>自动计算利润、保本价和五维评分，先把赚钱判断做清楚。</p><div className="capability-row"><span>成本分析</span><span>利润计算</span><span>风险判断</span><span>销售建议</span></div></section><ProductForm product={product} setProduct={setProduct} running={running} error={inputError} onSubmit={analyzeProduct} /></>
       )}
 
-      {!currentTask && mode === "goal" && (
+      {!currentTask && !currentChain && mode === "goal" && (
         <><section className="hero"><div className="agent-badge"><span /> AI 电商执行助手</div><h1>告诉我目标，<br /><em>我来拆解执行。</em></h1><p>建立选品任务、利润条件和执行方案，无需学习复杂工具。</p></section><section className="examples"><small>你可以这样说</small>{EXAMPLES.map((example) => <button key={example} type="button" onClick={() => runGoal(example)}>{example}<span>↗</span></button>)}</section></>
       )}
 
-      {!currentTask && mode === "selection" && (
+      {!currentTask && !currentChain && mode === "selection" && (
         <><section className="hero product-hero"><div className="agent-badge"><span /> AI 选品助手</div><h1>多个商品，<br /><em>选出先卖哪个。</em></h1><p>横向比较评分、利润率和单件利润，生成优先测试顺序。</p></section><SelectionForm products={products} selectedIds={selectedIds} setSelectedIds={setSelectedIds} running={running} error={inputError} onSubmit={compareProducts} onGoProduct={() => setMode("product")} /></>
       )}
 
+      {!currentTask && !currentChain && mode === "chain" && <ChainHome goal={chainGoal} setGoal={setChainGoal} running={running} error={inputError} onRun={runChain} chains={chains} onOpenChain={(chain) => { setCurrentChain(chain); setMode("chain"); setInputError(""); }} />}
+
       <TaskProgress task={currentTask} />
       <ExecutionReport report={currentTask?.result} />
+      <ChainProgress chain={currentChain} />
+      <ChainBlockedAction chain={currentChain} running={running} saleResult={saleResult} setSaleResult={setSaleResult} onResume={resumeChain} onGoProduct={() => { setCurrentChain(null); setMode("product"); setInputError(""); }} onCopy={copyPublishData} />
+      <ChainFinalReport chain={currentChain} />
       {currentTask?.status === TASK_STATUS.SUCCESS && <button className="new-task-button" type="button" onClick={startNew}>＋ {mode === "product" ? "分析另一个商品" : mode === "selection" ? "重新选择商品" : "创建新任务"}</button>}
+      {currentChain?.status === CHAIN_STATUS.SUCCESS && <button className="new-task-button" type="button" onClick={startNew}>＋ 创建新的自动任务</button>}
 
-      {mode === "goal" && !currentTask && (
+      {mode === "goal" && !currentTask && !currentChain && (
         <section className="composer-wrap">
           <label htmlFor="goal-input">告诉我你想卖什么？</label>
           <div className="composer"><textarea id="goal-input" rows="2" maxLength="300" value={goal} disabled={running} onChange={(event) => setGoal(event.target.value)} placeholder="例如：找适合闲鱼卖的高利润小商品" /><button type="button" disabled={running || !goal.trim()} onClick={() => runGoal()} aria-label="开始执行">{running ? <span className="button-loader" /> : "↑"}</button></div>
