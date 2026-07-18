@@ -7,10 +7,12 @@
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "test": "node --import tsx --test"
+    "test": "node --import tsx --test",
+    "browser:serve": "node server/browser-agent-server.js"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
+    "playwright": "1.61.1",
     "react": "latest",
     "react-dom": "latest",
     "vite": "latest"
