@@ -5,7 +5,7 @@ import { createRoot } from "react-dom/client";
 import { Window } from "happy-dom";
 import App from "../src/App.jsx";
 
-test("手机首页可以通过示例目标完成首次 Agent 任务", async () => {
+test("手机首页可以输入商品并获得商业分析报告", async () => {
   const window = new Window({ url: "https://hammer-commerce.test/" });
   window.scrollTo = () => {};
   Object.defineProperties(globalThis, {
@@ -20,20 +20,33 @@ test("手机首页可以通过示例目标完成首次 Agent 任务", async () =
   const root = createRoot(container);
 
   await act(async () => { root.render(React.createElement(App)); });
-  assert.match(document.querySelector("h1").textContent, /告诉我目标/);
-  const example = [...document.querySelectorAll(".examples button")]
-    .find((button) => button.textContent.includes("闲鱼"));
-  assert.ok(example, "没有找到闲鱼示例入口");
+  assert.match(document.querySelector("h1").textContent, /判断能不能卖/);
+
+  const enter = async (selector, value) => {
+    const input = document.querySelector(selector);
+    await act(async () => {
+      const prototype = input.tagName === "TEXTAREA" ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
+      Object.getOwnPropertyDescriptor(prototype, "value").set.call(input, value);
+      input.dispatchEvent(new window.InputEvent("input", { bubbles: true, data: value, inputType: "insertText" }));
+      input.dispatchEvent(new window.Event("change", { bubbles: true }));
+    });
+  };
+  await enter("#product-name", "桌面风扇");
+  await enter("#product-cost", "15");
+  await enter("#product-price", "39.9");
+  await enter("#product-shipping", "5");
+  await enter("#product-note", "夏季商品、小件、一件代发");
 
   await act(async () => {
-    example.click();
-    await new Promise((resolve) => setTimeout(resolve, 1650));
+    document.querySelector(".product-form").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
+    await new Promise((resolve) => setTimeout(resolve, 1750));
   });
 
-  assert.equal(document.querySelector(".task-heading b").textContent, "执行完成");
-  assert.match(document.querySelector(".report-card").textContent, /首轮电商任务执行报告/);
-  assert.match(document.querySelector(".metric-grid").textContent, /闲鱼/);
-  assert.equal(JSON.parse(localStorage.getItem("hammer-commerce-agent-v0.1-tasks")).length, 1);
+  assert.equal(document.querySelector(".task-heading b").textContent, "分析完成");
+  assert.match(document.querySelector(".business-report").textContent, /商业分析报告/);
+  assert.match(document.querySelector(".business-report").textContent, /桌面风扇/);
+  assert.match(document.querySelector(".business-report").textContent, /19.9/);
+  assert.equal(JSON.parse(localStorage.getItem("hammer-commerce-agent-v0.2-products")).length, 1);
 
   await act(async () => { root.unmount(); });
   window.close();
