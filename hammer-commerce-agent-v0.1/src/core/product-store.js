@@ -22,6 +22,11 @@ export class ProductStore {
     }
   }
 
+  getByIds(ids = []) {
+    const selected = new Set(ids);
+    return this.list().filter((product) => selected.has(product.id));
+  }
+
   saveAnalysis(product, report) {
     const now = new Date().toISOString();
     const record = {
