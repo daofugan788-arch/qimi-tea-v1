@@ -110,12 +110,20 @@ function ChainProgress({ chain }) {
   );
 }
 
-function ChainBlockedAction({ chain, running, saleResult, setSaleResult, onResume, onGoProduct, onCopy }) {
+function ChainBlockedAction({ chain, running, saleResult, setSaleResult, quickProductText, setQuickProductText, error, onQuickProduct, onResume, onGoProduct, onCopy }) {
   if (chain?.status !== CHAIN_STATUS.BLOCKED || !chain.blocked) return null;
   const { actionType, reason, data } = chain.blocked;
   if (actionType === "NEED_PRODUCTS" || actionType === "NO_VIABLE_PRODUCTS") {
     return (
-      <section className="chain-action-card"><span>任务链需要新条件</span><h2>{actionType === "NEED_PRODUCTS" ? "还没有候选商品" : "现有商品都不合格"}</h2><p>{reason}</p><div className="chain-action-buttons"><button type="button" className="secondary" onClick={onGoProduct}>添加候选商品</button><button type="button" onClick={() => onResume({ productsUpdated: true })} disabled={running}>已添加，继续 →</button></div></section>
+      <section className="chain-action-card quick-product-card">
+        <span>Agent 只需要一句商品资料</span>
+        <h2>{actionType === "NEED_PRODUCTS" ? "补充一个候选，自动继续" : "换一个候选，自动继续"}</h2>
+        <p>{reason}</p>
+        <textarea value={quickProductText} onChange={(event) => setQuickProductText(event.target.value)} rows="3" placeholder="例如：桌面风扇，成本15，售价39.9，运费5，备注夏季小件" disabled={running} />
+        {error && <p className="input-error">{error}</p>}
+        <div className="chain-action-buttons"><button type="button" className="secondary" onClick={onGoProduct}>使用完整表单</button><button type="button" onClick={onQuickProduct} disabled={running || !quickProductText.trim()}>{running ? "Agent 正在接管…" : "自动分析并继续 →"}</button></div>
+        <small className="operation-saving">原来：跳页并填写 5 项　现在：粘贴一句，自动恢复任务链</small>
+      </section>
     );
   }
   if (actionType === "CONFIRM_PUBLISH") {
@@ -135,13 +143,13 @@ function ChainFinalReport({ chain }) {
   if (chain?.status !== CHAIN_STATUS.SUCCESS || !chain.result) return null;
   const report = chain.result;
   return (
-    <section className="report-card chain-final-report"><div className="report-kicker">OWNER REPORT · V0.4</div><h2>今日任务汇报</h2><p className="report-summary">{report.summary}</p><div className="chain-result-list"><div><span>成交数量</span><b>{report.quantity} 件</b></div><div><span>成交收入</span><b>{money(report.revenue)}</b></div><div><span>今日利润</span><b>{money(report.profit)}</b></div></div>{report.target !== null && <p className={`target-result ${report.targetReached ? "reached" : ""}`}>{report.targetReached ? "✓ 已达到" : "尚未达到"} {money(report.target)} 利润目标</p>}<div className="report-section"><h3>Agent 下一步</h3><p>{report.nextAction}</p></div></section>
+    <section className="report-card chain-final-report"><div className="report-kicker">OWNER REPORT · V1.0</div><h2>今日任务汇报</h2><p className="report-summary">{report.summary}</p><div className="chain-result-list"><div><span>成交数量</span><b>{report.quantity} 件</b></div><div><span>成交收入</span><b>{money(report.revenue)}</b></div><div><span>今日利润</span><b>{money(report.profit)}</b></div></div>{report.target !== null && <p className={`target-result ${report.targetReached ? "reached" : ""}`}>{report.targetReached ? "✓ 已达到" : "尚未达到"} {money(report.target)} 利润目标</p>}<div className="report-section"><h3>Agent 下一步</h3><p>{report.nextAction}</p></div></section>
   );
 }
 
 function ChainHome({ goal, setGoal, running, error, onRun, chains, onOpenChain }) {
   return (
-    <><section className="hero chain-hero"><div className="agent-badge"><span /> 自动任务链</div><h1>只说目标，<br /><em>Agent 自己推进。</em></h1><p>自动寻找候选、判断利润、准备发布资料、等待成交并汇报利润。</p><div className="capability-row"><span>连续任务</span><span>自动跳过失败项</span><span>断点恢复</span><span>主人日报</span></div></section><section className="chain-command-card"><label htmlFor="chain-goal">今天想让 Agent 做什么？</label><textarea id="chain-goal" value={goal} onChange={(event) => setGoal(event.target.value)} rows="3" maxLength="300" placeholder="例如：帮我今天赚100块" disabled={running} />{error && <p className="input-error">{error}</p>}<button type="button" onClick={() => onRun(goal)} disabled={running || !goal.trim()}>{running ? <><span className="button-loader" /> 正在启动任务链</> : <>开始自动执行 <span>→</span></>}</button></section><section className="examples chain-examples"><small>一句话示例</small>{CHAIN_EXAMPLES.map((example) => <button key={example} type="button" onClick={() => onRun(example)}>{example}<span>↗</span></button>)}</section>{chains.length > 0 && <section className="recent-chains"><small>最近任务链</small>{chains.slice(0, 3).map((chain) => <button key={chain.id} type="button" onClick={() => onOpenChain(chain)}><span className={`status-dot status-${chain.status.toLowerCase()}`} /><div><b>{chain.goal}</b><small>{CHAIN_STATUS_TEXT[chain.status]} · {formatTime(chain.createdAt)}</small></div><i>›</i></button>)}</section>}</>
+    <><section className="hero chain-hero"><div className="agent-badge"><span /> Autonomous Commerce Agent</div><h1>只说目标，<br /><em>Agent 自己推进。</em></h1><p>尽量自动完成商业任务，只在登录、发布、下单和支付等必要节点请求确认。</p><div className="capability-row"><span>连续任务</span><span>自动跳过失败项</span><span>断点恢复</span><span>主人日报</span></div></section><section className="chain-command-card"><label htmlFor="chain-goal">今天想让 Agent 做什么？</label><textarea id="chain-goal" value={goal} onChange={(event) => setGoal(event.target.value)} rows="3" maxLength="300" placeholder="例如：帮我今天赚100块" disabled={running} />{error && <p className="input-error">{error}</p>}<button type="button" onClick={() => onRun(goal)} disabled={running || !goal.trim()}>{running ? <><span className="button-loader" /> 正在启动任务链</> : <>开始自动执行 <span>→</span></>}</button></section><section className="examples chain-examples"><small>一句话示例</small>{CHAIN_EXAMPLES.map((example) => <button key={example} type="button" onClick={() => onRun(example)}>{example}<span>↗</span></button>)}</section>{chains.length > 0 && <section className="recent-chains"><small>最近任务链</small>{chains.slice(0, 3).map((chain) => <button key={chain.id} type="button" onClick={() => onOpenChain(chain)}><span className={`status-dot status-${chain.status.toLowerCase()}`} /><div><b>{chain.goal}</b><small>{CHAIN_STATUS_TEXT[chain.status]} · {formatTime(chain.createdAt)}</small></div><i>›</i></button>)}</section>}</>
   );
 }
 
@@ -367,6 +375,7 @@ export default function App() {
   const [running, setRunning] = useState(false);
   const [inputError, setInputError] = useState("");
   const [saleResult, setSaleResult] = useState({ salePrice: "", quantity: "1" });
+  const [quickProductText, setQuickProductText] = useState("");
   const [installEvent, setInstallEvent] = useState(null);
 
   useEffect(() => {
@@ -471,6 +480,23 @@ export default function App() {
     finally { setChains(agent.getChains()); setRunning(false); }
   }
 
+  async function quickAddCandidate() {
+    if (!currentChain || running) return;
+    setRunning(true);
+    setInputError("");
+    try {
+      await agent.addCandidateAndResume(currentChain.id, quickProductText, handleChainUpdate);
+      setQuickProductText("");
+      setProducts(agent.getProducts());
+      setHistory(agent.getHistory());
+    } catch (error) {
+      setInputError(error?.message || "一句话商品信息识别失败。");
+    } finally {
+      setChains(agent.getChains());
+      setRunning(false);
+    }
+  }
+
   async function copyPublishData(data) {
     const text = `${data?.title || ""}\n\n${data?.description || ""}`.trim();
     if (!text) return;
@@ -505,7 +531,7 @@ export default function App() {
   return (
     <main className={`app-shell mode-${mode}`}>
       <header className="topbar">
-        <div className="brand"><span>H</span><div><b>Hammer Commerce</b><small>Agent V0.4</small></div></div>
+        <div className="brand"><span>H</span><div><b>Hammer Commerce</b><small>Autonomous Agent V1.0</small></div></div>
         <div className="top-actions">
           {installEvent && <button type="button" onClick={installApp}>安装</button>}
           <button type="button" onClick={() => setProductsOpen(true)}>商品 <i>{products.length}</i></button>
@@ -539,7 +565,7 @@ export default function App() {
       <TaskProgress task={currentTask} />
       <ExecutionReport report={currentTask?.result} />
       <ChainProgress chain={currentChain} />
-      <ChainBlockedAction chain={currentChain} running={running} saleResult={saleResult} setSaleResult={setSaleResult} onResume={resumeChain} onGoProduct={() => { setCurrentChain(null); setMode("product"); setInputError(""); }} onCopy={copyPublishData} />
+      <ChainBlockedAction chain={currentChain} running={running} saleResult={saleResult} setSaleResult={setSaleResult} quickProductText={quickProductText} setQuickProductText={setQuickProductText} error={inputError} onQuickProduct={quickAddCandidate} onResume={resumeChain} onGoProduct={() => { setCurrentChain(null); setMode("product"); setInputError(""); }} onCopy={copyPublishData} />
       <ChainFinalReport chain={currentChain} />
       {currentTask?.status === TASK_STATUS.SUCCESS && <button className="new-task-button" type="button" onClick={startNew}>＋ {mode === "product" ? "分析另一个商品" : mode === "selection" ? "重新选择商品" : "创建新任务"}</button>}
       {currentChain?.status === CHAIN_STATUS.SUCCESS && <button className="new-task-button" type="button" onClick={startNew}>＋ 创建新的自动任务</button>}
