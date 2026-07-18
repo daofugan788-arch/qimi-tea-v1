@@ -6,6 +6,7 @@ import { TaskStore } from "../src/core/task-store.js";
 import { ToolRegistry } from "../src/core/tool-registry.js";
 import { TASK_STATUS } from "../src/core/task-status.js";
 import { ProfitCalculatorTool } from "../src/tools/profit-calculator-tool.js";
+import { parseQuickProductText } from "../src/tools/product-quick-capture-tool.js";
 
 class MemoryStorage {
   constructor() { this.data = new Map(); }
@@ -232,4 +233,34 @@ test("利润不达标时任务链会自动放弃并继续寻找下一个商品",
   assert.equal(chain.context.attempts.length, 1);
   assert.equal(chain.context.attempts[0].productName, "亏损候选");
   assert.equal(chain.context.outputs["chain.profit.screen"].product.name, "可卖候选");
+});
+
+test("一句商品资料可以自动提取关键字段", () => {
+  const product = parseQuickProductText("便携收纳袋，成本4，售价19.9，运费3，平台费1，备注小件、轻、不易坏、竞争小");
+
+  assert.deepEqual(product, {
+    name: "便携收纳袋",
+    cost: 4,
+    price: 19.9,
+    shipping: 3,
+    platformFee: 1,
+    note: "小件、轻、不易坏、竞争小",
+  });
+});
+
+test("缺少候选时只提交一句资料即可分析、保存并恢复任务链", async () => {
+  const storage = new MemoryStorage();
+  const agent = createCommerceAgent({ storage, stepDelay: 0 });
+  let chain = await agent.runTaskChain("帮我今天卖一个商品");
+  assert.equal(chain.blocked.actionType, "NEED_PRODUCTS");
+
+  chain = await agent.addCandidateAndResume(
+    chain.id,
+    "便携收纳袋，成本4，售价19.9，运费3，平台费1，备注小件、轻、不易坏、竞争小",
+  );
+
+  assert.equal(agent.getProducts().length, 1);
+  assert.equal(chain.status, "BLOCKED");
+  assert.equal(chain.blocked.actionType, "CONFIRM_PUBLISH");
+  assert.equal(chain.context.outputs["chain.profit.screen"].product.name, "便携收纳袋");
 });
