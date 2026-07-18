@@ -1,0 +1,23 @@
+export const CHAIN_STATUS = Object.freeze({
+  WAITING: "WAITING",
+  RUNNING: "RUNNING",
+  BLOCKED: "BLOCKED",
+  SUCCESS: "SUCCESS",
+  FAILED: "FAILED",
+  PAUSED: "PAUSED",
+});
+
+export const CHAIN_STEP_STATUS = Object.freeze({
+  WAITING: "WAITING",
+  RUNNING: "RUNNING",
+  SUCCESS: "SUCCESS",
+  SKIPPED: "SKIPPED",
+  BLOCKED: "BLOCKED",
+  FAILED: "FAILED",
+});
+
+export const TOOL_OUTCOME = Object.freeze({
+  SUCCESS: "SUCCESS",
+  BLOCKED: "BLOCKED",
+  RETRY: "RETRY",
+});
