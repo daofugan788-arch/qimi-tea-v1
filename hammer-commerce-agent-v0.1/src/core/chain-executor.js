@@ -75,15 +75,16 @@ export class ChainExecutor {
               "chain.profit.screen": null,
             },
           };
+          const resetToStep = Number.isInteger(Number(result.resetToStep)) ? Number(result.resetToStep) : 0;
           const retrySteps = current.steps.map((item, index) => (
-            index <= 1
+            index >= resetToStep && index <= current.currentStepIndex
               ? { ...item, status: CHAIN_STEP_STATUS.WAITING, output: null, error: null }
               : item
           ));
           current = this.store.update(current.id, {
             context: nextContext,
             steps: retrySteps,
-            currentStepIndex: Number(result.resetToStep) || 0,
+            currentStepIndex: resetToStep,
           });
           onUpdate(current);
           continue;
