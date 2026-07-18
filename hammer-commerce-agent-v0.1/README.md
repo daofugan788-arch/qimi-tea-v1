@@ -1,57 +1,68 @@
-# Hammer Commerce Agent V0.1
+# Hammer Commerce Agent V0.2
 
-个人使用的移动端 AI 电商智能体。第一阶段完成 Sprint 01 Agent 核心：用户输入一句目标，系统创建任务、拆解步骤、调用工具、汇总执行报告并保存本机历史。
+个人使用的移动端 AI 电商智能体。V0.2 在 V0.1 Agent Core 基础上完成 Sprint 02 商品分析 Agent，让系统具备初步的“赚钱判断能力”。
 
-## 当前完成
+## V0.2 已完成
 
-- 移动端聊天式目标输入
-- Task 数据结构：`id`、`goal`、`createdAt`、`status`、`result`
-- Task 状态：`WAITING`、`RUNNING`、`SUCCESS`、`FAILED`
-- Agent Planner 任务拆解
-- Agent Executor 顺序执行、进度更新和失败处理
-- Tool Registry 独立工具注册机制
-- 执行报告生成
-- LocalStorage 任务历史
-- PWA manifest、Service Worker、桌面安装入口
-- OpenAI 兼容配置结构预留：`BASE_URL`、`API_KEY`、`MODEL`
+- 手机端商品信息输入：名称、采购价、售价、运费、平台费用、备注
+- `ProfitCalculatorTool` 利润计算工具
+- 毛利润、销售利润、利润率、保本价和建议售价
+- 商品 100 分评分
+- 评分权重：利润 30%、需求 25%、竞争 20%、售后安全 15%、运输 10%
+- 推荐等级：A / B / C / D
+- 成本分析、风险判断、销售建议
+- 商业分析报告
+- Products 本机商品库
+- 保留 V0.1 目标任务、Planner、Executor、Tool Registry 和任务历史
+- PWA 安装与离线缓存基础
 
-## Agent 执行链路
+## 商品分析流程
 
 ```text
-用户目标
-  → Task Store 创建任务
-  → Agent Planner 拆解步骤
-  → Agent Executor 调用 Tool Registry
-  → Report Tool 汇总结果
-  → 本机保存任务历史
+输入商品信息
+  → 创建 PRODUCT_ANALYSIS 任务
+  → Agent Planner 拆解五个步骤
+  → 校验商品数据
+  → ProfitCalculatorTool 计算利润
+  → ProductScoreTool 五维评分
+  → 生成商业分析报告
+  → 保存到 Products 商品库
 ```
 
-Sprint 01 默认工具：
+## 利润公式
 
-- `goal.analyze`：识别平台、类目、利润率目标
-- `scope.define`：生成选品筛选条件
-- `execution.plan`：输出下一步工作方案
-- `report.compose`：生成执行报告
+```text
+毛利润 = 售价 - 采购价 - 运费
+销售利润 = 毛利润 - 平台费用
+利润率 = 销售利润 ÷ 售价 × 100%
+最低成交价 = 采购价 + 运费 + 平台费用
+```
 
-## 运行
+## Products 字段
+
+```text
+id
+name
+cost
+price
+profit
+score
+created_time
+```
+
+同时保存运费、平台费用、利润率、推荐等级和备注，方便后续数据中心使用。
+
+## 运行与测试
 
 ```bash
 npm install
 npm run dev
-```
-
-构建：
-
-```bash
-npm run build
-```
-
-测试：
-
-```bash
 npm test
+npm run build
 ```
 
 ## 当前边界
 
-本版本只完成 Sprint 01，不接支付、库存、商城或复杂后台。实时商品搜索尚未接入，因此不会虚构货源与市场价格；Sprint 02 将在当前 Agent 架构上增加商品成本、售价、运费、平台费、利润与风险计算工具。
+需求、竞争、售后和运输评分目前依据商品名称、备注与成本结构进行规则初评，尚未接入实时平台数据。系统会明确提示数据依据，不会虚构销量、货源或市场价格。
+
+本版本不包含自动发布闲鱼、自动登录平台、自动下单、支付、库存或大型后台。
