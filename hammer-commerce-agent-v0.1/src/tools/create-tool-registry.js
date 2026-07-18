@@ -6,6 +6,8 @@ import { reportComposeTool } from "./report-compose-tool.js";
 import { productNormalizeTool } from "./product-normalize-tool.js";
 import { ProfitCalculatorTool } from "./profit-calculator-tool.js";
 import { productScoreTool } from "./product-score-tool.js";
+import { selectionPrepareTool } from "./selection-prepare-tool.js";
+import { productCompareTool } from "./product-compare-tool.js";
 
 export function createToolRegistry() {
   return new ToolRegistry()
@@ -15,5 +17,7 @@ export function createToolRegistry() {
     .register(productNormalizeTool)
     .register(new ProfitCalculatorTool())
     .register(productScoreTool)
+    .register(selectionPrepareTool)
+    .register(productCompareTool)
     .register(reportComposeTool);
 }
