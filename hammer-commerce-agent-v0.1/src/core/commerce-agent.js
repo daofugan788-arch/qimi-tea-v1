@@ -1,5 +1,5 @@
 export class CommerceAgent {
-  constructor({ store, productStore, planner, executor, chainStore, chainPlanner, chainExecutor, salesStore, registry } = {}) {
+  constructor({ store, productStore, planner, executor, chainStore, chainPlanner, chainExecutor, salesStore, evidenceStore, registry } = {}) {
     this.store = store;
     this.productStore = productStore;
     this.planner = planner;
@@ -8,6 +8,7 @@ export class CommerceAgent {
     this.chainPlanner = chainPlanner;
     this.chainExecutor = chainExecutor;
     this.salesStore = salesStore;
+    this.evidenceStore = evidenceStore;
     this.registry = registry;
   }
 
@@ -58,7 +59,7 @@ export class CommerceAgent {
   }
 
   async runTaskChain(goal, onUpdate = () => {}) {
-    const steps = this.chainPlanner.createPlan(goal);
+    const steps = this.chainPlanner.createPlan(goal, { hasProducts: this.productStore.list().length > 0 });
     const chain = this.chainStore.create(goal, steps);
     onUpdate(chain);
     return this.chainExecutor.run(chain, onUpdate);
@@ -70,13 +71,13 @@ export class CommerceAgent {
 
   async addCandidateAndResume(chainId, text, onUpdate = () => {}) {
     const chain = this.chainStore.get(chainId);
-    if (!chain || chain.status !== "BLOCKED" || !["NEED_PRODUCTS", "NO_VIABLE_PRODUCTS"].includes(chain.blocked?.actionType)) {
+    if (!chain || chain.status !== "BLOCKED" || !["NEED_PRODUCTS", "NO_VIABLE_PRODUCTS", "BROWSER_SERVICE_REQUIRED", "BROWSER_SEARCH_FAILED", "NO_PUBLIC_RESULTS"].includes(chain.blocked?.actionType)) {
       throw new Error("当前任务链不需要补充候选商品");
     }
     const product = await this.registry.execute("product.quick.capture", { text });
     const analysis = await this.runProductAnalysis(product);
     if (analysis.status !== "SUCCESS") throw new Error(analysis.error || "候选商品分析失败");
-    return this.resumeTaskChain(chainId, { productsUpdated: true }, onUpdate);
+    return this.resumeTaskChain(chainId, { productsUpdated: true, skipBrowser: true }, onUpdate);
   }
 
   getHistory() {
@@ -93,5 +94,9 @@ export class CommerceAgent {
 
   getSales() {
     return this.salesStore.list();
+  }
+
+  getEvidence() {
+    return this.evidenceStore.list();
   }
 }
