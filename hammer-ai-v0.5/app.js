@@ -1,7 +1,9 @@
 import { generateMarketingContent, PLATFORM_LABELS } from "./api.js";
+import { PAYMENT_CONFIG } from "./config.js";
 
 const DRAFT_KEY = "hammer-ai-v0.5-draft";
 const LAST_RESULT_KEY = "hammer-ai-v0.5-last-result";
+const USAGE_KEY = "hammer-ai-v0.6-usage";
 
 const screens = [...document.querySelectorAll("[data-screen]")];
 const form = document.querySelector("#product-form");
@@ -16,8 +18,40 @@ const resultProduct = document.querySelector("#result-product");
 const resultNotice = document.querySelector("#result-notice");
 const copyButton = document.querySelector("#copy-button");
 const toast = document.querySelector("#toast");
+const interestStatus = document.querySelector("#interest-status");
 
 let activeController = null;
+
+function readUsage() {
+  try {
+    return {
+      generations: 0,
+      copies: 0,
+      pricingViews: 0,
+      accessRequests: 0,
+      ...JSON.parse(localStorage.getItem(USAGE_KEY) || "{}"),
+    };
+  } catch {
+    return { generations: 0, copies: 0, pricingViews: 0, accessRequests: 0 };
+  }
+}
+
+function writeUsage(changes = {}) {
+  const next = { ...readUsage(), ...changes, updatedAt: Date.now() };
+  localStorage.setItem(USAGE_KEY, JSON.stringify(next));
+  return next;
+}
+
+function hasFreeGeneration() {
+  return !PAYMENT_CONFIG.enabled || readUsage().generations < PAYMENT_CONFIG.freeGenerations;
+}
+
+function showPricing() {
+  const usage = readUsage();
+  writeUsage({ pricingViews: usage.pricingViews + 1, lastPricingViewAt: Date.now() });
+  interestStatus.textContent = "点击后把申请信息发给给你链接的人即可。";
+  showScreen("pricing");
+}
 
 function showScreen(name) {
   screens.forEach((screen) => {
@@ -85,11 +119,12 @@ function showResult(data, result) {
   resultContent.textContent = result.content;
   resultNotice.textContent = result.warning || (result.source === "remote" ? "内容由 AI 生成，请发布前检查。" : "当前使用本地模板生成，商品资料没有上传。 ");
   localStorage.setItem(LAST_RESULT_KEY, JSON.stringify({ data, result, createdAt: Date.now() }));
+  const usage = readUsage();
+  writeUsage({ generations: usage.generations + 1, lastGeneratedAt: Date.now() });
   showScreen("result");
 }
 
-async function copyResult() {
-  const text = resultContent.textContent;
+async function copyText(text) {
   try {
     await navigator.clipboard.writeText(text);
   } catch {
@@ -102,6 +137,13 @@ async function copyResult() {
     document.execCommand("copy");
     textarea.remove();
   }
+}
+
+async function copyResult() {
+  const text = resultContent.textContent;
+  await copyText(text);
+  const usage = readUsage();
+  writeUsage({ copies: usage.copies + 1, lastCopiedAt: Date.now() });
   copyButton.textContent = "已复制，可以去发布了";
   showToast("文案已复制");
   setTimeout(() => { copyButton.textContent = "一键复制全部内容"; }, 1800);
@@ -149,6 +191,11 @@ form.addEventListener("submit", async (event) => {
   formError.textContent = error;
   if (error) return;
 
+  if (!hasFreeGeneration()) {
+    showPricing();
+    return;
+  }
+
   saveDraft();
   activeController?.abort();
   activeController = new AbortController();
@@ -179,6 +226,48 @@ document.querySelector("#new-button").addEventListener("click", () => {
   showScreen("form");
 });
 copyButton.addEventListener("click", copyResult);
+document.querySelector("#view-pricing-button").addEventListener("click", showPricing);
+document.querySelector("#pricing-back-button").addEventListener("click", () => showScreen("result"));
+document.querySelector("#pricing-home-button").addEventListener("click", () => showScreen("home"));
+
+function createAccessRequest() {
+  const requestId = `HAM-${Date.now().toString(36).slice(-6).toUpperCase()}`;
+  return {
+    requestId,
+    text: `我想开通 Hammer AI ${PAYMENT_CONFIG.planName}（¥${PAYMENT_CONFIG.price}/${PAYMENT_CONFIG.billingCycle}），请联系我。开通编号：${requestId}`,
+  };
+}
+
+async function requestAccess({ share = false } = {}) {
+  const request = createAccessRequest();
+  const usage = readUsage();
+  writeUsage({
+    accessRequests: usage.accessRequests + 1,
+    lastAccessRequestAt: Date.now(),
+    lastAccessRequestId: request.requestId,
+  });
+
+  if (share && navigator.share) {
+    interestStatus.textContent = "正在打开手机分享面板……";
+    try {
+      await navigator.share({ title: "Hammer AI 商家内测", text: request.text });
+      interestStatus.textContent = `申请已发出，编号 ${request.requestId}`;
+      return;
+    } catch (error) {
+      if (error?.name === "AbortError") {
+        interestStatus.textContent = "已取消分享，你也可以复制申请信息。";
+        return;
+      }
+    }
+  }
+
+  await copyText(request.text);
+  interestStatus.textContent = `申请信息已复制，编号 ${request.requestId}`;
+  showToast("开通申请已复制");
+}
+
+document.querySelector("#request-access-button").addEventListener("click", () => requestAccess({ share: true }));
+document.querySelector("#copy-request-button").addEventListener("click", () => requestAccess());
 
 loadDraft();
 showScreen("home");
