@@ -1,0 +1,19 @@
+{
+  "name": "Hammer Commerce Agent",
+  "short_name": "Hammer Agent",
+  "description": "个人使用的 AI 电商智能体",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#f5f3ed",
+  "theme_color": "#101411",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
