@@ -3,6 +3,37 @@ export const reportComposeTool = {
   description: "把全部步骤结果汇总为用户可读的执行报告",
   riskLevel: "LOW",
   async execute({ goal }, context) {
+    if (context.task.type === "PRODUCT_COMPARISON") {
+      const comparison = context.outputs["product.compare"];
+      const winner = comparison.winner;
+      const runnerUp = comparison.rankings.find((product) => product.id !== winner?.id && product.profit > 0);
+      const testPlan = winner
+        ? [
+          `优先测试「${winner.name}」，首批控制在 1—3 件或直接使用一件代发`,
+          runnerUp ? `将「${runnerUp.name}」作为对照组，使用相同曝光周期测试` : "暂不增加对照商品，先验证第一名的真实需求",
+          "连续记录 3 天曝光、咨询、议价、收藏和成交数据",
+          "真实成交后更新成本与售后数据，再决定是否扩大投入",
+        ]
+        : [
+          "当前候选商品均未达到测试门槛，先调整售价、成本或更换候选商品",
+          "不要囤货，用平台真实同类价格重新校验输入数据",
+        ];
+      return {
+        kind: "SELECTION_COMPARISON",
+        title: "选品对比报告",
+        goal,
+        summary: winner
+          ? `已对比 ${comparison.rankings.length} 个商品，建议优先测试「${winner.name}」。`
+          : `已对比 ${comparison.rankings.length} 个商品，目前没有达到测试门槛的候选项。`,
+        winner,
+        rankings: comparison.rankings,
+        viableCount: comparison.viableCount,
+        rejectedCount: comparison.rejectedCount,
+        testPlan,
+        notice: "排名只使用商品库中已录入的成本与规则评分，不包含实时销量、搜索热度或平台竞争数据。",
+        generatedAt: new Date().toISOString(),
+      };
+    }
     if (context.task.type === "PRODUCT_ANALYSIS") {
       const product = context.outputs["product.normalize"];
       const profit = context.outputs["profit.calculate"];
@@ -66,7 +97,7 @@ export const reportComposeTool = {
       filters: scope.filters,
       actions: plan.actions,
       requiredInputs: plan.requiredInputs,
-      notice: "当前是 V0.2 测试版，尚未接入实时商品数据；报告不会虚构货源或市场价格。",
+      notice: "当前是 V0.3 测试版，尚未接入实时商品数据；报告不会虚构货源或市场价格。",
       generatedAt: new Date().toISOString(),
     };
   },
