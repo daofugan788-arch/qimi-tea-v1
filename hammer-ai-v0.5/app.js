@@ -4,6 +4,8 @@ import { PAYMENT_CONFIG } from "./config.js";
 const DRAFT_KEY = "hammer-ai-v0.5-draft";
 const LAST_RESULT_KEY = "hammer-ai-v0.5-last-result";
 const USAGE_KEY = "hammer-ai-v0.6-usage";
+const CHECKOUT_KEY = "hammer-ai-v0.7-checkout";
+const PAYMENT_ORDERS_KEY = "hammer-ai-v0.7-payment-orders";
 
 const screens = [...document.querySelectorAll("[data-screen]")];
 const form = document.querySelector("#product-form");
@@ -19,6 +21,12 @@ const resultNotice = document.querySelector("#result-notice");
 const copyButton = document.querySelector("#copy-button");
 const toast = document.querySelector("#toast");
 const interestStatus = document.querySelector("#interest-status");
+const paymentQr = document.querySelector("#payment-qr");
+const paymentPlaceholder = document.querySelector("#payment-placeholder");
+const confirmPaymentButton = document.querySelector("#confirm-payment-button");
+const paymentNote = document.querySelector("#payment-note");
+const checkoutOrderId = document.querySelector("#checkout-order-id");
+const paymentStatusOrderId = document.querySelector("#payment-status-order-id");
 
 let activeController = null;
 
@@ -29,10 +37,12 @@ function readUsage() {
       copies: 0,
       pricingViews: 0,
       accessRequests: 0,
+      checkoutStarts: 0,
+      paymentSubmissions: 0,
       ...JSON.parse(localStorage.getItem(USAGE_KEY) || "{}"),
     };
   } catch {
-    return { generations: 0, copies: 0, pricingViews: 0, accessRequests: 0 };
+    return { generations: 0, copies: 0, pricingViews: 0, accessRequests: 0, checkoutStarts: 0, paymentSubmissions: 0 };
   }
 }
 
@@ -49,7 +59,7 @@ function hasFreeGeneration() {
 function showPricing() {
   const usage = readUsage();
   writeUsage({ pricingViews: usage.pricingViews + 1, lastPricingViewAt: Date.now() });
-  interestStatus.textContent = "点击后把申请信息发给给你链接的人即可。";
+  interestStatus.textContent = "进入收款页后确认方案和订单信息。";
   showScreen("pricing");
 }
 
@@ -149,6 +159,120 @@ async function copyResult() {
   setTimeout(() => { copyButton.textContent = "一键复制全部内容"; }, 1800);
 }
 
+function readPaymentOrders() {
+  try {
+    const orders = JSON.parse(localStorage.getItem(PAYMENT_ORDERS_KEY) || "[]");
+    return Array.isArray(orders) ? orders : [];
+  } catch {
+    return [];
+  }
+}
+
+function savePaymentOrder(order) {
+  const orders = readPaymentOrders();
+  const index = orders.findIndex((item) => item.orderId === order.orderId);
+  if (index >= 0) orders[index] = order;
+  else orders.unshift(order);
+  localStorage.setItem(PAYMENT_ORDERS_KEY, JSON.stringify(orders.slice(0, 20)));
+  localStorage.setItem(CHECKOUT_KEY, JSON.stringify(order));
+  return order;
+}
+
+function readCurrentCheckout() {
+  try {
+    return JSON.parse(localStorage.getItem(CHECKOUT_KEY) || "null");
+  } catch {
+    return null;
+  }
+}
+
+function renderCheckout(order) {
+  document.querySelector("#checkout-plan-name").textContent = order.planName;
+  document.querySelector("#checkout-amount").textContent = `¥${order.amount}`;
+  document.querySelector("#checkout-cycle").textContent = `/ ${order.billingCycle}`;
+  document.querySelector("#payment-method").textContent = `收款方式：${PAYMENT_CONFIG.paymentMethodLabel}`;
+  checkoutOrderId.textContent = order.orderId;
+
+  const hasPaymentCode = Boolean(String(PAYMENT_CONFIG.paymentQrUrl || "").trim());
+  paymentQr.hidden = !hasPaymentCode;
+  paymentPlaceholder.hidden = hasPaymentCode;
+  if (hasPaymentCode) {
+    paymentQr.src = PAYMENT_CONFIG.paymentQrUrl;
+    confirmPaymentButton.textContent = "我已完成付款";
+    paymentNote.textContent = "付款时请备注订单编号，完成后点击上方按钮，等待管理员核对。";
+  } else {
+    paymentQr.removeAttribute("src");
+    confirmPaymentButton.textContent = "模拟已付款（测试）";
+    paymentNote.textContent = "当前是安全测试模式，仅验证购买流程，不会收款。";
+  }
+}
+
+function createCheckout() {
+  const order = savePaymentOrder({
+    orderId: `HAM-${Date.now().toString(36).slice(-7).toUpperCase()}`,
+    planName: PAYMENT_CONFIG.planName,
+    amount: PAYMENT_CONFIG.price,
+    billingCycle: PAYMENT_CONFIG.billingCycle,
+    status: "pending_payment",
+    testMode: !Boolean(String(PAYMENT_CONFIG.paymentQrUrl || "").trim()),
+    createdAt: Date.now(),
+  });
+  const usage = readUsage();
+  writeUsage({
+    checkoutStarts: usage.checkoutStarts + 1,
+    lastCheckoutAt: Date.now(),
+    lastCheckoutOrderId: order.orderId,
+  });
+  renderCheckout(order);
+  showScreen("checkout");
+}
+
+function renderPaymentStatus(order) {
+  paymentStatusOrderId.textContent = order.orderId;
+}
+
+function submitPaymentForConfirmation() {
+  const checkout = readCurrentCheckout();
+  if (!checkout) {
+    showToast("订单已失效，请重新进入收款页");
+    showPricing();
+    return;
+  }
+  const order = savePaymentOrder({
+    ...checkout,
+    status: "waiting_confirmation",
+    submittedAt: Date.now(),
+  });
+  const usage = readUsage();
+  writeUsage({
+    paymentSubmissions: usage.paymentSubmissions + 1,
+    lastPaymentSubmittedAt: Date.now(),
+    lastPaymentOrderId: order.orderId,
+  });
+  renderPaymentStatus(order);
+  showScreen("payment-status");
+}
+
+async function sharePaymentOrder() {
+  const order = readCurrentCheckout();
+  if (!order) {
+    showToast("没有找到订单");
+    return;
+  }
+  const modeText = order.testMode ? "测试订单（未真实付款）" : "已提交付款申请";
+  const text = `Hammer AI ${order.planName}\n订单编号：${order.orderId}\n金额：¥${order.amount}/${order.billingCycle}\n状态：${modeText}，等待人工确认`;
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: "Hammer AI 付款申请", text });
+      return;
+    } catch (error) {
+      if (error?.name === "AbortError") return;
+    }
+  }
+  await copyText(text);
+  showToast("订单信息已复制");
+}
+
 const examples = {
   tea: {
     name: "凤凰单丛茶",
@@ -229,6 +353,16 @@ copyButton.addEventListener("click", copyResult);
 document.querySelector("#view-pricing-button").addEventListener("click", showPricing);
 document.querySelector("#pricing-back-button").addEventListener("click", () => showScreen("result"));
 document.querySelector("#pricing-home-button").addEventListener("click", () => showScreen("home"));
+document.querySelector("#checkout-back-button").addEventListener("click", () => showScreen("pricing"));
+document.querySelector("#payment-home-button").addEventListener("click", () => showScreen("home"));
+document.querySelector("#copy-order-button").addEventListener("click", async () => {
+  const order = readCurrentCheckout();
+  if (!order) return;
+  await copyText(order.orderId);
+  showToast("订单编号已复制");
+});
+confirmPaymentButton.addEventListener("click", submitPaymentForConfirmation);
+document.querySelector("#share-payment-button").addEventListener("click", sharePaymentOrder);
 
 function createAccessRequest() {
   const requestId = `HAM-${Date.now().toString(36).slice(-6).toUpperCase()}`;
@@ -266,7 +400,7 @@ async function requestAccess({ share = false } = {}) {
   showToast("开通申请已复制");
 }
 
-document.querySelector("#request-access-button").addEventListener("click", () => requestAccess({ share: true }));
+document.querySelector("#request-access-button").addEventListener("click", createCheckout);
 document.querySelector("#copy-request-button").addEventListener("click", () => requestAccess());
 
 loadDraft();
