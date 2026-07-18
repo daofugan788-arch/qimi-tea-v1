@@ -8,7 +8,11 @@ export class ToolRegistry {
       throw new Error("工具必须提供 name 和 execute");
     }
     if (this.tools.has(tool.name)) throw new Error(`工具已注册：${tool.name}`);
-    this.tools.set(tool.name, Object.freeze({ riskLevel: "LOW", ...tool }));
+    this.tools.set(tool.name, Object.freeze({
+      riskLevel: "LOW",
+      ...tool,
+      execute: tool.execute.bind(tool),
+    }));
     return this;
   }
 
