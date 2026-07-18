@@ -1,5 +1,5 @@
 export class CommerceAgent {
-  constructor({ store, productStore, planner, executor, chainStore, chainPlanner, chainExecutor, salesStore } = {}) {
+  constructor({ store, productStore, planner, executor, chainStore, chainPlanner, chainExecutor, salesStore, registry } = {}) {
     this.store = store;
     this.productStore = productStore;
     this.planner = planner;
@@ -8,6 +8,7 @@ export class CommerceAgent {
     this.chainPlanner = chainPlanner;
     this.chainExecutor = chainExecutor;
     this.salesStore = salesStore;
+    this.registry = registry;
   }
 
   createTask(goal, metadata) {
@@ -65,6 +66,17 @@ export class CommerceAgent {
 
   async resumeTaskChain(chainId, signals, onUpdate = () => {}) {
     return this.chainExecutor.resume(chainId, signals, onUpdate);
+  }
+
+  async addCandidateAndResume(chainId, text, onUpdate = () => {}) {
+    const chain = this.chainStore.get(chainId);
+    if (!chain || chain.status !== "BLOCKED" || !["NEED_PRODUCTS", "NO_VIABLE_PRODUCTS"].includes(chain.blocked?.actionType)) {
+      throw new Error("当前任务链不需要补充候选商品");
+    }
+    const product = await this.registry.execute("product.quick.capture", { text });
+    const analysis = await this.runProductAnalysis(product);
+    if (analysis.status !== "SUCCESS") throw new Error(analysis.error || "候选商品分析失败");
+    return this.resumeTaskChain(chainId, { productsUpdated: true }, onUpdate);
   }
 
   getHistory() {
