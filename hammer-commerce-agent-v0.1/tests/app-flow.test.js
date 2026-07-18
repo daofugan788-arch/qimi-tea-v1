@@ -20,6 +20,10 @@ test("手机首页可以输入商品并获得商业分析报告", async () => {
   const root = createRoot(container);
 
   await act(async () => { root.render(React.createElement(App)); });
+  assert.match(document.querySelector("h1").textContent, /Agent 自己推进/);
+  const productTab = [...document.querySelectorAll(".mode-tabs button")]
+    .find((button) => button.textContent.includes("商品分析"));
+  await act(async () => { productTab.click(); });
   assert.match(document.querySelector("h1").textContent, /判断能不能卖/);
 
   const enter = async (selector, value) => {
