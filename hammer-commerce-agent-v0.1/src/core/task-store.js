@@ -30,11 +30,12 @@ export class TaskStore {
     return this.list().find((task) => task.id === id) || null;
   }
 
-  create(goal) {
+  create(goal, metadata = {}) {
     const normalizedGoal = String(goal || "").trim();
     if (!normalizedGoal) throw new Error("请输入你想完成的电商目标");
     const now = Date.now();
     const task = {
+      ...clone(metadata),
       id: createId(now),
       goal: normalizedGoal,
       createdAt: new Date(now).toISOString(),
