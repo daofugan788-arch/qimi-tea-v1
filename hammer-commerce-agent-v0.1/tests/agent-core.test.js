@@ -5,6 +5,7 @@ import { AgentExecutor } from "../src/core/agent-executor.js";
 import { TaskStore } from "../src/core/task-store.js";
 import { ToolRegistry } from "../src/core/tool-registry.js";
 import { TASK_STATUS } from "../src/core/task-status.js";
+import { ProfitCalculatorTool } from "../src/tools/profit-calculator-tool.js";
 
 class MemoryStorage {
   constructor() { this.data = new Map(); }
@@ -79,4 +80,58 @@ test("工具失败时任务进入 FAILED 并保存错误", async () => {
   assert.equal(failed.status, TASK_STATUS.FAILED);
   assert.equal(failed.error, "测试工具失败");
   assert.equal(failed.steps[0].status, TASK_STATUS.FAILED);
+});
+
+test("ProfitCalculatorTool 正确计算利润、利润率和最低成交价", async () => {
+  const tool = new ProfitCalculatorTool();
+  const result = await tool.execute({}, {
+    outputs: {
+      "product.normalize": {
+        name: "桌面风扇",
+        cost: 15,
+        price: 39.9,
+        shipping: 5,
+        platformFee: 2,
+      },
+    },
+  });
+
+  assert.equal(result.grossProfit, 19.9);
+  assert.equal(result.netProfit, 17.9);
+  assert.equal(result.profitRate, 44.86);
+  assert.equal(result.minimumDealPrice, 22);
+  assert.ok(result.recommendedPrice >= 31.43);
+});
+
+test("商品分析 Agent 输出商业报告并保存 Products 商品库", async () => {
+  const storage = new MemoryStorage();
+  const agent = createCommerceAgent({ storage, stepDelay: 0 });
+  const completed = await agent.runProductAnalysis({
+    name: "桌面风扇",
+    cost: 15,
+    price: 39.9,
+    shipping: 5,
+    platformFee: 0,
+    note: "夏季商品、小件、一件代发",
+  });
+
+  assert.equal(completed.status, TASK_STATUS.SUCCESS);
+  assert.equal(completed.steps.length, 5);
+  assert.equal(completed.result.kind, "PRODUCT_ANALYSIS");
+  assert.equal(completed.result.product.name, "桌面风扇");
+  assert.equal(completed.result.profit.net, 19.9);
+  assert.equal(completed.result.profit.rate, 49.87);
+  assert.ok(completed.result.score.total >= 0 && completed.result.score.total <= 100);
+  assert.ok(completed.result.risks.length > 0);
+  assert.ok(completed.result.nextActions.length > 0);
+
+  const products = agent.getProducts();
+  assert.equal(products.length, 1);
+  assert.match(products[0].id, /^PRD-/);
+  assert.equal(products[0].name, "桌面风扇");
+  assert.equal(products[0].cost, 15);
+  assert.equal(products[0].price, 39.9);
+  assert.equal(products[0].profit, 19.9);
+  assert.equal(products[0].score, completed.result.score.total);
+  assert.ok(products[0].created_time);
 });
