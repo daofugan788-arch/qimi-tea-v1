@@ -28,5 +28,6 @@ export function createCommerceAgent({ storage, stepDelay } = {}) {
     chainPlanner,
     chainExecutor,
     salesStore,
+    registry,
   });
 }
