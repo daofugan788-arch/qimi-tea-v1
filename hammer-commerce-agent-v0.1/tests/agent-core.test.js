@@ -135,3 +135,28 @@ test("商品分析 Agent 输出商业报告并保存 Products 商品库", async 
   assert.equal(products[0].score, completed.result.score.total);
   assert.ok(products[0].created_time);
 });
+
+test("选品 Agent 可以对商品库候选项排序并输出优先测试商品", async () => {
+  const storage = new MemoryStorage();
+  const agent = createCommerceAgent({ storage, stepDelay: 0 });
+  await agent.runProductAnalysis({
+    name: "桌面风扇", cost: 15, price: 39.9, shipping: 5, platformFee: 0,
+    note: "夏季商品、小件、一件代发",
+  });
+  await agent.runProductAnalysis({
+    name: "便携收纳袋", cost: 4, price: 19.9, shipping: 3, platformFee: 1,
+    note: "小件、轻、不易坏、竞争小",
+  });
+  const productIds = agent.getProducts().map((product) => product.id);
+  const completed = await agent.runProductComparison(productIds);
+
+  assert.equal(completed.status, TASK_STATUS.SUCCESS);
+  assert.equal(completed.type, "PRODUCT_COMPARISON");
+  assert.equal(completed.steps.length, 3);
+  assert.equal(completed.result.kind, "SELECTION_COMPARISON");
+  assert.equal(completed.result.rankings.length, 2);
+  assert.ok(completed.result.winner);
+  assert.equal(completed.result.rankings[0].id, completed.result.winner.id);
+  assert.ok(completed.result.rankings[0].score >= completed.result.rankings[1].score);
+  assert.ok(completed.result.testPlan.length >= 3);
+});
