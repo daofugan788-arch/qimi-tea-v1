@@ -74,7 +74,7 @@ function TaskProgress({ task }) {
 function BusinessReport({ report }) {
   return (
     <section className="report-card business-report">
-      <div className="report-kicker">COMMERCE REPORT · V0.2</div>
+      <div className="report-kicker">COMMERCE REPORT · V0.3</div>
       <div className="business-title-row">
         <div><h2>{report.title}</h2><p>{report.product.name}</p></div>
         <div className="score-ring" style={{ "--score": `${report.score.total * 3.6}deg` }}>
@@ -118,6 +118,35 @@ function BusinessReport({ report }) {
   );
 }
 
+function SelectionReport({ report }) {
+  return (
+    <section className="report-card selection-report">
+      <div className="report-kicker">SELECTION REPORT · V0.3</div>
+      <h2>{report.title}</h2>
+      <p className="report-summary">{report.summary}</p>
+      {report.winner && (
+        <div className="winner-card">
+          <span>优先测试商品</span>
+          <div><h3>{report.winner.name}</h3><b>{report.winner.score}<small>/100</small></b></div>
+          <p>单件利润 {money(report.winner.profit)} · 利润率 {report.winner.profitRate}%</p>
+        </div>
+      )}
+      <div className="ranking-list">
+        {report.rankings.map((product) => (
+          <article key={product.id} className={product.rank === 1 && report.winner ? "ranking-first" : ""}>
+            <i>{product.rank}</i>
+            <div><b>{product.name}</b><small>{product.decision}</small></div>
+            <span><b>{product.score}</b><small>分</small></span>
+            <p>利润 {money(product.profit)} · 利润率 {product.profitRate}% · 售价 {money(product.price)}</p>
+          </article>
+        ))}
+      </div>
+      <div className="report-section"><h3>测试顺序</h3><ol>{report.testPlan.map((item) => <li key={item}>{item}</li>)}</ol></div>
+      <p className="report-notice">{report.notice}</p>
+    </section>
+  );
+}
+
 function GoalReport({ report }) {
   return (
     <section className="report-card">
@@ -136,7 +165,9 @@ function GoalReport({ report }) {
 
 function ExecutionReport({ report }) {
   if (!report) return null;
-  return report.kind === "PRODUCT_ANALYSIS" ? <BusinessReport report={report} /> : <GoalReport report={report} />;
+  if (report.kind === "PRODUCT_ANALYSIS") return <BusinessReport report={report} />;
+  if (report.kind === "SELECTION_COMPARISON") return <SelectionReport report={report} />;
+  return <GoalReport report={report} />;
 }
 
 function ProductForm({ product, setProduct, running, error, onSubmit }) {
@@ -158,6 +189,44 @@ function ProductForm({ product, setProduct, running, error, onSubmit }) {
       </button>
       <p className="form-note">利润使用你的真实数字计算；需求与竞争先做规则初评。</p>
     </form>
+  );
+}
+
+function SelectionForm({ products, selectedIds, setSelectedIds, running, error, onSubmit, onGoProduct }) {
+  function toggle(id) {
+    setSelectedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+  }
+  if (products.length < 2) {
+    return (
+      <section className="selection-empty">
+        <span>还差 {2 - products.length} 个商品</span>
+        <h2>先分析至少两个商品</h2>
+        <p>完成单品分析后，商品会自动进入商品库，再由 Agent 做横向排名。</p>
+        <button type="button" onClick={onGoProduct}>去分析商品 →</button>
+      </section>
+    );
+  }
+  return (
+    <section className="selection-form">
+      <div className="form-heading"><span>选择候选商品</span><small>已选 {selectedIds.length} 个</small></div>
+      <div className="candidate-list">
+        {products.map((product) => {
+          const selected = selectedIds.includes(product.id);
+          return (
+            <button key={product.id} type="button" className={selected ? "selected" : ""} aria-pressed={selected} onClick={() => toggle(product.id)} disabled={running}>
+              <i>{selected ? "✓" : ""}</i>
+              <div><b>{product.name}</b><small>利润 {money(product.profit)} · 利润率 {product.profitRate}%</small></div>
+              <span><b>{product.score}</b><small>分</small></span>
+            </button>
+          );
+        })}
+      </div>
+      {error && <p className="input-error">{error}</p>}
+      <button className="analyze-button" type="button" onClick={onSubmit} disabled={running || selectedIds.length < 2}>
+        {running ? <><span className="button-loader" /> Agent 正在对比</> : <>开始选品对比 <span>→</span></>}
+      </button>
+      <p className="form-note">对比使用已保存的利润和评分，不会调用或虚构平台数据。</p>
+    </section>
   );
 }
 
@@ -211,6 +280,7 @@ export default function App() {
   const agent = useMemo(() => createCommerceAgent({ stepDelay: 300 }), []);
   const [mode, setMode] = useState("product");
   const [product, setProduct] = useState({ ...EMPTY_PRODUCT });
+  const [selectedIds, setSelectedIds] = useState([]);
   const [goal, setGoal] = useState("");
   const [currentTask, setCurrentTask] = useState(null);
   const [history, setHistory] = useState(() => agent.getHistory());
@@ -273,6 +343,17 @@ export default function App() {
     finally { setHistory(agent.getHistory()); setRunning(false); }
   }
 
+  async function compareProducts() {
+    if (running) return;
+    if (selectedIds.length < 2) return setInputError("至少选择 2 个商品进行对比。");
+    setInputError("");
+    setRunning(true);
+    setCurrentTask(null);
+    try { await agent.runProductComparison(selectedIds, handleUpdate); }
+    catch (error) { setInputError(error?.message || "选品对比失败。"); }
+    finally { setHistory(agent.getHistory()); setRunning(false); }
+  }
+
   async function installApp() {
     if (!installEvent) return;
     await installEvent.prompt();
@@ -281,7 +362,7 @@ export default function App() {
 
   function selectHistory(task) {
     setCurrentTask(task);
-    setMode(task.type === "PRODUCT_ANALYSIS" ? "product" : "goal");
+    setMode(task.type === "PRODUCT_ANALYSIS" ? "product" : task.type === "PRODUCT_COMPARISON" ? "selection" : "goal");
     setHistoryOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -290,13 +371,14 @@ export default function App() {
     setCurrentTask(null);
     setInputError("");
     if (mode === "product") setProduct({ ...EMPTY_PRODUCT });
+    else if (mode === "selection") setSelectedIds([]);
     else setGoal("");
   }
 
   return (
     <main className={`app-shell mode-${mode}`}>
       <header className="topbar">
-        <div className="brand"><span>H</span><div><b>Hammer Commerce</b><small>Agent V0.2</small></div></div>
+        <div className="brand"><span>H</span><div><b>Hammer Commerce</b><small>Agent V0.3</small></div></div>
         <div className="top-actions">
           {installEvent && <button type="button" onClick={installApp}>安装</button>}
           <button type="button" onClick={() => setProductsOpen(true)}>商品 <i>{products.length}</i></button>
@@ -307,6 +389,7 @@ export default function App() {
       {!currentTask && (
         <nav className="mode-tabs" aria-label="Agent 模式">
           <button className={mode === "product" ? "active" : ""} type="button" onClick={() => { setMode("product"); setInputError(""); }}>商品分析</button>
+          <button className={mode === "selection" ? "active" : ""} type="button" onClick={() => { setMode("selection"); setInputError(""); }}>选品对比</button>
           <button className={mode === "goal" ? "active" : ""} type="button" onClick={() => { setMode("goal"); setInputError(""); }}>目标任务</button>
         </nav>
       )}
@@ -319,9 +402,13 @@ export default function App() {
         <><section className="hero"><div className="agent-badge"><span /> AI 电商执行助手</div><h1>告诉我目标，<br /><em>我来拆解执行。</em></h1><p>建立选品任务、利润条件和执行方案，无需学习复杂工具。</p></section><section className="examples"><small>你可以这样说</small>{EXAMPLES.map((example) => <button key={example} type="button" onClick={() => runGoal(example)}>{example}<span>↗</span></button>)}</section></>
       )}
 
+      {!currentTask && mode === "selection" && (
+        <><section className="hero product-hero"><div className="agent-badge"><span /> AI 选品助手</div><h1>多个商品，<br /><em>选出先卖哪个。</em></h1><p>横向比较评分、利润率和单件利润，生成优先测试顺序。</p></section><SelectionForm products={products} selectedIds={selectedIds} setSelectedIds={setSelectedIds} running={running} error={inputError} onSubmit={compareProducts} onGoProduct={() => setMode("product")} /></>
+      )}
+
       <TaskProgress task={currentTask} />
       <ExecutionReport report={currentTask?.result} />
-      {currentTask?.status === TASK_STATUS.SUCCESS && <button className="new-task-button" type="button" onClick={startNew}>＋ {mode === "product" ? "分析另一个商品" : "创建新任务"}</button>}
+      {currentTask?.status === TASK_STATUS.SUCCESS && <button className="new-task-button" type="button" onClick={startNew}>＋ {mode === "product" ? "分析另一个商品" : mode === "selection" ? "重新选择商品" : "创建新任务"}</button>}
 
       {mode === "goal" && !currentTask && (
         <section className="composer-wrap">
