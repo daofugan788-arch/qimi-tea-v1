@@ -11,7 +11,7 @@
 <body>
   <main class="app-shell">
     <section class="screen active" data-screen="home" aria-hidden="false">
-      <header class="brand"><span class="brand-mark">H</span><b>Hammer AI</b><em>V0.6</em></header>
+      <header class="brand"><span class="brand-mark">H</span><b>Hammer AI</b><em>V0.7</em></header>
       <div class="hero">
         <p class="eyebrow">卖货老板的文案助手</p>
         <h1>上传商品，1分钟生成<br><span>朋友圈、小红书、短视频卖货内容</span></h1>
@@ -93,11 +93,41 @@
           <li>填写商品后直接生成，不用写提示词</li>
           <li>手机打开即用，一键复制发布</li>
         </ul>
-        <button class="primary-button" id="request-access-button" type="button">申请开通内测</button>
+        <button class="primary-button" id="request-access-button" type="button">立即开通内测</button>
         <button class="copy-request-button" id="copy-request-button" type="button">复制开通申请</button>
-        <p class="interest-status" id="interest-status">点击后把申请信息发给给你链接的人即可。</p>
+        <p class="interest-status" id="interest-status">进入收款页后确认方案和订单信息。</p>
       </section>
       <button class="pricing-home-button" id="pricing-home-button" type="button">暂不开通，返回首页</button>
+    </section>
+
+    <section class="screen" data-screen="checkout" aria-hidden="true">
+      <header class="screen-header"><button class="back-button" id="checkout-back-button" type="button" aria-label="返回">←</button><div><small>确认开通</small><b>完成付款申请</b></div></header>
+      <section class="checkout-card">
+        <div class="checkout-plan"><span id="checkout-plan-name">商家内测版</span><b id="checkout-amount">¥19.9</b><small id="checkout-cycle">/ 月</small></div>
+        <div class="payment-code-wrap">
+          <img id="payment-qr" alt="付款收款码" hidden>
+          <div class="payment-placeholder" id="payment-placeholder">
+            <span>测试模式</span>
+            <b>正式收款码尚未配置</b>
+            <small>当前页面不会发生真实扣款</small>
+          </div>
+        </div>
+        <p class="payment-method" id="payment-method">收款方式：微信收款码</p>
+        <div class="order-row"><span>订单编号</span><b id="checkout-order-id"></b></div>
+        <button class="copy-order-button" id="copy-order-button" type="button">复制订单编号</button>
+        <button class="primary-button" id="confirm-payment-button" type="button">模拟已付款（测试）</button>
+        <p class="payment-note" id="payment-note">当前是安全测试模式，仅验证购买流程，不会收款。</p>
+      </section>
+    </section>
+
+    <section class="screen payment-status-screen" data-screen="payment-status" aria-hidden="true">
+      <div class="status-icon" aria-hidden="true">✓</div>
+      <p class="eyebrow">申请已记录</p>
+      <h1>等待人工确认</h1>
+      <p class="status-copy">付款申请已经提交。正式运营时，管理员核对收款记录后再开通使用。</p>
+      <div class="status-order"><span>订单编号</span><b id="payment-status-order-id"></b><small>状态：等待人工确认</small></div>
+      <button class="primary-button" id="share-payment-button" type="button">发送订单给管理员</button>
+      <button class="pricing-home-button" id="payment-home-button" type="button">返回首页</button>
     </section>
   </main>
   <div class="toast" id="toast" role="status"></div>
