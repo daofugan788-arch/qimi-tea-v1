@@ -1,0 +1,15 @@
+FROM mcr.microsoft.com/playwright:v1.61.1-noble
+
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+
+COPY server ./server
+COPY src/core/browser-search-planner.js ./src/core/browser-search-planner.js
+
+ENV NODE_ENV=production
+ENV BROWSER_AGENT_PORT=8787
+ENV BROWSER_EVIDENCE_DIR=/app/evidence
+EXPOSE 8787
+
+CMD ["npm", "run", "browser:serve"]
