@@ -1,9 +1,13 @@
 export class CommerceAgent {
-  constructor({ store, productStore, planner, executor } = {}) {
+  constructor({ store, productStore, planner, executor, chainStore, chainPlanner, chainExecutor, salesStore } = {}) {
     this.store = store;
     this.productStore = productStore;
     this.planner = planner;
     this.executor = executor;
+    this.chainStore = chainStore;
+    this.chainPlanner = chainPlanner;
+    this.chainExecutor = chainExecutor;
+    this.salesStore = salesStore;
   }
 
   createTask(goal, metadata) {
@@ -52,11 +56,30 @@ export class CommerceAgent {
     return this.executeTask(task, onUpdate);
   }
 
+  async runTaskChain(goal, onUpdate = () => {}) {
+    const steps = this.chainPlanner.createPlan(goal);
+    const chain = this.chainStore.create(goal, steps);
+    onUpdate(chain);
+    return this.chainExecutor.run(chain, onUpdate);
+  }
+
+  async resumeTaskChain(chainId, signals, onUpdate = () => {}) {
+    return this.chainExecutor.resume(chainId, signals, onUpdate);
+  }
+
   getHistory() {
     return this.store.list();
   }
 
   getProducts() {
     return this.productStore.list();
+  }
+
+  getChains() {
+    return this.chainStore.list();
+  }
+
+  getSales() {
+    return this.salesStore.list();
   }
 }
