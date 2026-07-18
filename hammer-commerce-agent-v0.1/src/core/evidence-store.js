@@ -32,9 +32,11 @@ export class EvidenceStore {
         sourceUrl: item.sourceUrl,
         price: item.price,
         salesText: item.salesText || "未公开",
+        reviewText: item.reviewText || "未公开",
         ratingText: item.ratingText || "未公开",
         imageUrl: item.imageUrl || "",
         screenshotUrl: item.screenshotUrl || "",
+        pageScreenshotUrl: item.pageScreenshotUrl || "",
         capturedAt: item.capturedAt || now,
       })),
     };

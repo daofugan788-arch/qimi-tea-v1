@@ -10,14 +10,16 @@
 
 每个 Sprint 必须提交改造前操作数、改造后操作数和实际减少数。不能减少人工操作的页面、图表、评分或装饰性功能暂不开发。
 
-## Sprint 04：Browser Agent V0.1
+## Sprint 05：Browser Agent Real Execution
 
-已完成基础版代码：
+已完成真实浏览执行：
 
 - `BrowserSearchPlanner`：从一句目标提取关键词、最高采购价和最低预计利润
-- `BrowserPublicSearchTool`：调用 Playwright 浏览服务打开公开商品页面
-- 读取公开商品名称、价格、销量文字、评价文字、图片和来源链接
-- `EvidenceFileStore`：服务端保存商品卡价格截图和完整 JSON 执行证据
+- `Browser Service`：创建 `WAITING → RUNNING → SUCCESS/FAILED` 浏览任务并支持查询
+- Playwright + Chromium 真正打开服务端白名单公开商品页面
+- 读取公开商品名称、价格、图片、来源链接，以及页面公开的销量、评价数量和评分字段
+- `EvidenceFileStore`：保存整页截图、逐商品价格截图和完整 JSON 执行证据
+- `ProductSource`：保存来源平台、URL、抓取时间、截图、价格和标题
 - `EvidenceStore`：手机端保存证据索引、来源和采集时间
 - 自动把公开页面候选写入商品库并继续利润筛选
 - 自动生成《今日选品报告》
@@ -90,6 +92,8 @@ src/core/evidence-store.js             手机端证据索引
 src/tools/browser-tools.js             Browser/Evidence/Report Tools
 server/public-browser-runner.js        Playwright 公开页面执行器
 server/browser-agent-server.js         Browser Agent HTTP 服务
+server/browser-task-store.js           浏览任务状态
+server/chromium-runtime.js              可部署 Chromium 运行时
 server/evidence-file-store.js          截图与 JSON 证据保存
 Dockerfile.browser-agent               浏览服务容器
 ```
@@ -101,4 +105,4 @@ npm test
 npm run build
 ```
 
-当前 Browser Agent V0.1 已完成代码、Mock 全链路测试与 Docker 部署配置。真正的公开平台搜索还需要部署 Browser 服务并配置合规的平台白名单来源；未连接前系统会明确暂停，不会伪造结果。
+真实执行验收已通过：Browser Service 打开 Webscraper 公开测试商城，自动抓取 3 个商品，保存 1 张整页截图、3 张商品截图和 JSON 会话证据，并由前端 Task Chain 生成《今日选品报告》。该来源只用于验证真实浏览闭环；接入商业平台时仍需先确认公开访问规则并配置平台白名单适配器。

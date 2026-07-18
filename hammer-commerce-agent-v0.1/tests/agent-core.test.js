@@ -8,6 +8,7 @@ import { TASK_STATUS } from "../src/core/task-status.js";
 import { ProfitCalculatorTool } from "../src/tools/profit-calculator-tool.js";
 import { parseQuickProductText } from "../src/tools/product-quick-capture-tool.js";
 import { BrowserSearchPlanner } from "../src/core/browser-search-planner.js";
+import { BrowserTaskStore } from "../server/browser-task-store.js";
 
 class MemoryStorage {
   constructor() { this.data = new Map(); }
@@ -276,6 +277,25 @@ test("Search Planner 将一句找货目标拆成价格、利润和证据任务",
   assert.match(plan.tasks[3].title, /截图/);
 });
 
+test("Search Planner 支持限制真实浏览结果数量", () => {
+  const plan = new BrowserSearchPlanner().createPlan("找前3个100元以内的手机");
+
+  assert.equal(plan.query, "手机");
+  assert.equal(plan.constraints.limit, 3);
+});
+
+test("Browser Service 任务记录 WAITING 到 SUCCESS 状态", () => {
+  const store = new BrowserTaskStore();
+  const waiting = store.create({ goal: "找测试商品", plan: { query: "测试商品" } });
+  const running = store.update(waiting.id, "RUNNING", { runId: "BRW-1" });
+  const success = store.update(waiting.id, "SUCCESS", { result: { itemCount: 3 } });
+
+  assert.equal(waiting.status, "WAITING");
+  assert.equal(running.status, "RUNNING");
+  assert.equal(success.status, "SUCCESS");
+  assert.equal(store.get(waiting.id).result.itemCount, 3);
+});
+
 test("Browser Agent 一句话完成公开搜索、证据保存、利润筛选和报告", async () => {
   const storage = new MemoryStorage();
   let requestBody = null;
@@ -296,6 +316,7 @@ test("Browser Agent 一句话完成公开搜索、证据保存、利润筛选和
             marketReference: 39.9,
             estimatedProfit: 24.1,
             salesText: "公开销量 200+",
+            reviewText: "56 条评价",
             ratingText: "4.8",
             imageUrl: "https://example.com/product/1.jpg",
             screenshotUrl: "https://browser.test/evidence/1.png",
@@ -322,6 +343,15 @@ test("Browser Agent 一句话完成公开搜索、证据保存、利润筛选和
   assert.equal(requestBody.plan.constraints.minProfit, 20);
   assert.equal(agent.getEvidence().length, 1);
   assert.equal(agent.getProducts().length, 1);
+  assert.deepEqual(agent.getProducts()[0].productSource, {
+    platform: "平台A公开页",
+    url: "https://example.com/product/1",
+    capturedAt: "2026-07-19T08:00:00.000Z",
+    screenshot: "https://browser.test/evidence/1.png",
+    pageScreenshot: "",
+    price: 15.8,
+    title: "桌面小风扇",
+  });
   assert.equal(report.title, "今日选品报告");
   assert.equal(report.items[0].sourcePrice, 15.8);
   assert.equal(report.items[0].estimatedProfit, 24.1);

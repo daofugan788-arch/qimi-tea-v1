@@ -1,3 +1,5 @@
+import { createProductSource } from "./product-source.js";
+
 export const PRODUCT_STORAGE_KEY = "hammer-commerce-agent-v0.2-products";
 
 function clone(value) {
@@ -73,12 +75,15 @@ export class ProductStore {
       source: String(item?.source || "").trim(),
       sourceUrl,
       salesText: String(item?.salesText || "未公开"),
+      reviewText: String(item?.reviewText || "未公开"),
       ratingText: String(item?.ratingText || "未公开"),
+      pageScreenshotUrl: String(item?.pageScreenshotUrl || ""),
       imageUrl: String(item?.imageUrl || ""),
       screenshotUrl: String(item?.screenshotUrl || ""),
       reason: String(item?.reason || ""),
       evidenceSessionId: item?.evidenceSessionId || null,
       capturedAt: item?.capturedAt || new Date().toISOString(),
+      productSource: createProductSource(item),
       created_time: new Date().toISOString(),
     };
     products.unshift(record);

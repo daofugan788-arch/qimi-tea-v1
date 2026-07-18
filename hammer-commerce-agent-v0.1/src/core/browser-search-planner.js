@@ -10,6 +10,7 @@ function readKeywords(text) {
   const cleaned = text
     .replace(/(?:帮我|今天|请|想要)/g, " ")
     .replace(/(?:寻找|搜索|找|发现|筛选)/g, " ")
+    .replace(/(?:前|最多)\s*\d+\s*个/g, " ")
     .replace(/利润(?:率)?\s*\d+(?:\.\d+)?\s*(?:元|%)?\s*(?:以上|以内|以下)?/g, " ")
     .replace(/\d+(?:\.\d+)?\s*元?\s*(?:以内|以下|以上|左右)/g, " ")
     .replace(/(?:适合|可以|能够)?\s*(?:个人)?\s*(?:卖|销售|测试)的?/g, " ")
@@ -34,6 +35,7 @@ export class BrowserSearchPlanner {
       /利润\s*(\d+(?:\.\d+)?)\s*元?\s*(?:以上|起)?/,
       /至少赚\s*(\d+(?:\.\d+)?)/,
     ]);
+    const requestedLimit = readNumber(text, [/(?:前|最多)\s*(\d+)\s*个/]);
     const query = readKeywords(text);
     return {
       goal: text,
@@ -41,7 +43,7 @@ export class BrowserSearchPlanner {
       constraints: {
         maxSourcePrice,
         minProfit,
-        limit: 12,
+        limit: Math.min(20, Math.max(1, requestedLimit || 8)),
       },
       tasks: [
         { id: "BROWSER-1", title: `搜索公开页面：${query}` },

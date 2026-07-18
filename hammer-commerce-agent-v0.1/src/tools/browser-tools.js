@@ -94,6 +94,7 @@ export const browserReportComposeTool = {
       marketReference: product.price,
       estimatedProfit: product.profit,
       salesText: product.salesText,
+      reviewText: product.reviewText,
       ratingText: product.ratingText,
       imageUrl: product.imageUrl,
       screenshotUrl: product.screenshotUrl,
@@ -110,7 +111,7 @@ export const browserReportComposeTool = {
       capturedAt: evidence?.session?.capturedAt,
       items,
       operationReduction: { before: 5, after: 1, reduced: 4 },
-      notice: "价格、销量和评价均来自抓取时可公开访问的页面；预计利润不等于实际成交利润。",
+      notice: "价格及页面提供的销量、评价字段来自抓取时可公开访问的页面；未公开字段会明确标记，预计利润不等于实际成交利润。",
     });
   },
 };

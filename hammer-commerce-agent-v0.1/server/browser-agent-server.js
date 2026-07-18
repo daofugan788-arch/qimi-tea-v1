@@ -5,6 +5,7 @@ import { BrowserSearchPlanner } from "../src/core/browser-search-planner.js";
 import { loadBrowserSources } from "./browser-sources.js";
 import { EvidenceFileStore } from "./evidence-file-store.js";
 import { PublicBrowserRunner } from "./public-browser-runner.js";
+import { BrowserTaskStore } from "./browser-task-store.js";
 
 const port = Number(process.env.BROWSER_AGENT_PORT || process.env.PORT || 8787);
 const evidenceDirectory = process.env.BROWSER_EVIDENCE_DIR || path.resolve("evidence");
@@ -12,6 +13,7 @@ const evidenceStore = new EvidenceFileStore(evidenceDirectory);
 const planner = new BrowserSearchPlanner();
 const sources = loadBrowserSources();
 const runner = new PublicBrowserRunner({ evidenceStore });
+const taskStore = new BrowserTaskStore();
 const requestLog = new Map();
 
 function headers(origin = "*") {
@@ -67,6 +69,12 @@ const server = http.createServer(async (request, response) => {
       return json(response, 404, { error: "证据文件不存在" }, origin);
     }
   }
+  if (request.method === "GET" && url.pathname.startsWith("/api/browser/tasks/")) {
+    const task = taskStore.get(path.basename(url.pathname));
+    return task
+      ? json(response, 200, { task }, origin)
+      : json(response, 404, { error: "浏览任务不存在" }, origin);
+  }
   if (request.method !== "POST" || url.pathname !== "/api/browser/search") {
     return json(response, 404, { error: "Not found" }, origin);
   }
@@ -78,22 +86,31 @@ const server = http.createServer(async (request, response) => {
 
   const ip = String(request.headers["x-forwarded-for"] || request.socket.remoteAddress || "unknown").split(",")[0];
   if (rateLimited(ip)) return json(response, 429, { error: "搜索过于频繁，请稍后再试" }, origin);
+  let task = null;
   try {
     if (!sources.length) throw new Error("没有配置允许访问的公开商品来源");
     const body = await readJson(request);
     const goal = String(body.goal || "").trim().slice(0, 300);
     const plan = planner.createPlan(goal);
     const runId = `BRW-${Date.now().toString(36).toUpperCase()}`;
+    task = taskStore.create({ goal, plan });
+    taskStore.update(task.id, "RUNNING", { runId });
     await evidenceStore.prepare();
     const items = await runner.search({ plan, sources, runId });
     const baseUrl = process.env.BROWSER_PUBLIC_BASE_URL || `${request.headers["x-forwarded-proto"] || "http"}://${request.headers.host}`;
-    const responseItems = items.map(({ screenshotFile, ...item }) => ({
+    const responseItems = items.map(({ screenshotFile, pageScreenshotFile, ...item }) => ({
       ...item,
       screenshotUrl: `${baseUrl.replace(/\/$/, "")}/evidence/${screenshotFile}`,
+      pageScreenshotUrl: `${baseUrl.replace(/\/$/, "")}/evidence/${pageScreenshotFile}`,
     }));
-    await evidenceStore.saveSession(runId, { runId, goal, plan, items: responseItems, capturedAt: new Date().toISOString() });
-    return json(response, 200, { runId, plan, items: responseItems }, origin);
+    const capturedAt = new Date().toISOString();
+    await evidenceStore.saveSession(runId, { runId, taskId: task.id, goal, plan, items: responseItems, capturedAt });
+    const completedTask = taskStore.update(task.id, "SUCCESS", {
+      result: { runId, itemCount: responseItems.length, capturedAt },
+    });
+    return json(response, 200, { task: completedTask, runId, plan, items: responseItems }, origin);
   } catch (error) {
+    if (task) taskStore.update(task.id, "FAILED", { error: error?.message || "Browser Agent 执行失败" });
     return json(response, 422, { error: error?.message || "Browser Agent 执行失败" }, origin);
   }
 });
