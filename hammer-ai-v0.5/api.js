@@ -147,4 +147,100 @@ export async function generateMarketingContent(input, { config = AI_CONFIG, sign
   }
 }
 
+function reviseLocalContent(originalContent, instruction, input) {
+  const content = cleanGeneratedContent(originalContent, 6000);
+  const request = clean(instruction, 120);
+  const product = normalizeProduct(input);
+
+  if (/短|精简|简洁|少一点/.test(request)) {
+    const blocks = content.split(/\n{2,}/).filter(Boolean);
+    const priceBlock = blocks.find((block) => /价格|到手价|元|¥/.test(block));
+    const selected = [blocks[0], blocks[1], priceBlock, blocks.at(-1)].filter(Boolean);
+    return {
+      content: [...new Set(selected)].join("\n\n").slice(0, 420),
+      source: "local",
+      platformLabel: PLATFORM_LABELS[product.platform],
+    };
+  }
+
+  if (/口语|自然|像聊天|随意/.test(request)) {
+    return {
+      content: content
+        .replace(/^最近发现一个很值得分享的好东西——/, "跟大家分享一个最近发现的好东西：")
+        .replace(/特别适合/g, "很适合")
+        .replace(/想了解细节或需要下单/g, "想了解或者想下单")
+        .replace(/综合体验和价格都比较合适/g, "用下来感觉挺值的"),
+      source: "local",
+      platformLabel: PLATFORM_LABELS[product.platform],
+    };
+  }
+
+  if (/价格|优惠|到手价/.test(request)) {
+    const opening = product.price
+      ? `${product.name}，现在到手 ${product.price}。价格和卖点都给大家说清楚：`
+      : `${product.name}的价格可以私聊了解，先把几个重点说清楚：`;
+    return {
+      content: `${opening}\n\n${content}`,
+      source: "local",
+      platformLabel: PLATFORM_LABELS[product.platform],
+    };
+  }
+
+  return {
+    content,
+    source: "local",
+    platformLabel: PLATFORM_LABELS[product.platform],
+    warning: "当前体验版支持“口语一点、短一点、强调价格”；接入正式模型后可自由改写。",
+  };
+}
+
+async function reviseRemoteContent(originalContent, instruction, input, config, signal) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), Number(config.timeoutMs) || 30000);
+  const abort = () => controller.abort();
+  signal?.addEventListener("abort", abort, { once: true });
+  const product = normalizeProduct(input);
+  try {
+    const response = await fetch(normalizeChatURL(config.apiUrl), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: config.model,
+        messages: [
+          { role: "system", content: "你是中文卖货文案编辑。只输出修改后的完整文案，不解释。不得夸大功效或虚构信息。" },
+          { role: "user", content: `商品：${product.name}\n发布平台：${PLATFORM_LABELS[product.platform]}\n修改要求：${clean(instruction, 120)}\n原文：\n${cleanGeneratedContent(originalContent, 6000)}` },
+        ],
+        temperature: Number(config.temperature) || 0.7,
+        max_tokens: Number(config.maxTokens) || 1200,
+        stream: false,
+      }),
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error(`模型接口返回 ${response.status}`);
+    const data = await response.json();
+    const content = cleanGeneratedContent(data?.choices?.[0]?.message?.content, 6000);
+    if (!content) throw new Error("模型没有返回有效内容");
+    return { content, source: "remote", platformLabel: PLATFORM_LABELS[product.platform] };
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener("abort", abort);
+  }
+}
+
+export async function reviseMarketingContent(originalContent, instruction, input, { config = AI_CONFIG, signal } = {}) {
+  if (!hasRemoteAIConfig(config)) return reviseLocalContent(originalContent, instruction, input);
+  try {
+    return await reviseRemoteContent(originalContent, instruction, input, config, signal);
+  } catch (error) {
+    if (error?.name === "AbortError") throw error;
+    return {
+      ...reviseLocalContent(originalContent, instruction, input),
+      warning: `模型暂时不可用，已用本地规则修改：${error?.message || "连接失败"}`,
+    };
+  }
+}
+
 export { PLATFORM_LABELS };
