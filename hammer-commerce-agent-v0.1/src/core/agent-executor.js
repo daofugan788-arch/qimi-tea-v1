@@ -27,7 +27,10 @@ export class AgentExecutor {
         onUpdate(current);
         if (this.stepDelay > 0) await wait(this.stepDelay);
 
-        const output = await this.registry.execute(step.tool, { goal: task.goal }, context);
+        const output = await this.registry.execute(step.tool, {
+          goal: task.goal,
+          product: task.product || null,
+        }, context);
         context.outputs[step.tool] = output;
         const completedSteps = current.steps.map((item) => (
           item.id === step.id ? { ...item, status: STEP_STATUS.SUCCESS, output } : item
