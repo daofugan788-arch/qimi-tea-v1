@@ -3,6 +3,8 @@ import { createCommerceAgent } from "./core/create-agent.js";
 import { STEP_STATUS, TASK_STATUS } from "./core/task-status.js";
 import { CHAIN_STATUS, CHAIN_STEP_STATUS } from "./core/chain-status.js";
 
+const BROWSER_GATEWAY_URL = import.meta.env?.VITE_BROWSER_AGENT_URL || "";
+
 const EXAMPLES = [
   "找适合闲鱼卖的高利润小商品",
   "帮我筛选利润率30%以上的商品",
@@ -113,11 +115,12 @@ function ChainProgress({ chain }) {
 function ChainBlockedAction({ chain, running, saleResult, setSaleResult, quickProductText, setQuickProductText, error, onQuickProduct, onResume, onGoProduct, onCopy }) {
   if (chain?.status !== CHAIN_STATUS.BLOCKED || !chain.blocked) return null;
   const { actionType, reason, data } = chain.blocked;
-  if (actionType === "NEED_PRODUCTS" || actionType === "NO_VIABLE_PRODUCTS") {
+  if (["NEED_PRODUCTS", "NO_VIABLE_PRODUCTS", "BROWSER_SERVICE_REQUIRED", "BROWSER_SEARCH_FAILED", "NO_PUBLIC_RESULTS"].includes(actionType)) {
+    const browserBlocked = actionType.startsWith("BROWSER_") || actionType === "NO_PUBLIC_RESULTS";
     return (
       <section className="chain-action-card quick-product-card">
-        <span>Agent 只需要一句商品资料</span>
-        <h2>{actionType === "NEED_PRODUCTS" ? "补充一个候选，自动继续" : "换一个候选，自动继续"}</h2>
+        <span>{browserBlocked ? "Browser Agent 安全暂停" : "Agent 只需要一句商品资料"}</span>
+        <h2>{browserBlocked ? "可用一句资料继续任务" : actionType === "NEED_PRODUCTS" ? "补充一个候选，自动继续" : "换一个候选，自动继续"}</h2>
         <p>{reason}</p>
         <textarea value={quickProductText} onChange={(event) => setQuickProductText(event.target.value)} rows="3" placeholder="例如：桌面风扇，成本15，售价39.9，运费5，备注夏季小件" disabled={running} />
         {error && <p className="input-error">{error}</p>}
@@ -144,6 +147,27 @@ function ChainFinalReport({ chain }) {
   const report = chain.result;
   return (
     <section className="report-card chain-final-report"><div className="report-kicker">OWNER REPORT · V1.0</div><h2>今日任务汇报</h2><p className="report-summary">{report.summary}</p><div className="chain-result-list"><div><span>成交数量</span><b>{report.quantity} 件</b></div><div><span>成交收入</span><b>{money(report.revenue)}</b></div><div><span>今日利润</span><b>{money(report.profit)}</b></div></div>{report.target !== null && <p className={`target-result ${report.targetReached ? "reached" : ""}`}>{report.targetReached ? "✓ 已达到" : "尚未达到"} {money(report.target)} 利润目标</p>}<div className="report-section"><h3>Agent 下一步</h3><p>{report.nextAction}</p></div></section>
+  );
+}
+
+function BrowserSelectionReport({ report }) {
+  if (!report || report.skipped || !report.items?.length) return null;
+  return (
+    <section className="report-card browser-report">
+      <div className="report-kicker">BROWSER AGENT · V0.1</div>
+      <h2>{report.title}</h2>
+      <p className="report-summary">自动搜索“{report.query}”，发现 {report.discovered} 个符合条件的公开页面候选。</p>
+      <div className="operation-reduction"><span>人工操作</span><b>{report.operationReduction.before} 步 → {report.operationReduction.after} 步</b><small>少做 {report.operationReduction.reduced} 步</small></div>
+      <div className="browser-candidate-list">
+        {report.items.slice(0, 6).map((item) => (
+          <article key={item.id}>
+            {(item.screenshotUrl || item.imageUrl) && <img src={item.screenshotUrl || item.imageUrl} alt={`${item.name}公开页面证据`} loading="lazy" />}
+            <div><span>{item.source}</span><h3>{item.name}</h3><p>来源价 {money(item.sourcePrice)} · 市场参考 {money(item.marketReference)}</p><p>预计利润 {money(item.estimatedProfit)} · {item.recommendation}</p><small>{item.salesText} · 评价 {item.ratingText}</small>{item.sourceUrl && <a href={item.sourceUrl} target="_blank" rel="noreferrer">查看公开来源 ↗</a>}</div>
+          </article>
+        ))}
+      </div>
+      <p className="report-notice">{report.notice}</p>
+    </section>
   );
 }
 
@@ -359,7 +383,7 @@ function ProductPanel({ products, onClose, onClear }) {
 }
 
 export default function App() {
-  const agent = useMemo(() => createCommerceAgent({ stepDelay: 300 }), []);
+  const agent = useMemo(() => createCommerceAgent({ stepDelay: 300, browserGatewayUrl: BROWSER_GATEWAY_URL }), []);
   const [mode, setMode] = useState("chain");
   const [product, setProduct] = useState({ ...EMPTY_PRODUCT });
   const [selectedIds, setSelectedIds] = useState([]);
@@ -565,6 +589,7 @@ export default function App() {
       <TaskProgress task={currentTask} />
       <ExecutionReport report={currentTask?.result} />
       <ChainProgress chain={currentChain} />
+      <BrowserSelectionReport report={currentChain?.context?.outputs?.["browser.report.compose"]} />
       <ChainBlockedAction chain={currentChain} running={running} saleResult={saleResult} setSaleResult={setSaleResult} quickProductText={quickProductText} setQuickProductText={setQuickProductText} error={inputError} onQuickProduct={quickAddCandidate} onResume={resumeChain} onGoProduct={() => { setCurrentChain(null); setMode("product"); setInputError(""); }} onCopy={copyPublishData} />
       <ChainFinalReport chain={currentChain} />
       {currentTask?.status === TASK_STATUS.SUCCESS && <button className="new-task-button" type="button" onClick={startNew}>＋ {mode === "product" ? "分析另一个商品" : mode === "selection" ? "重新选择商品" : "创建新任务"}</button>}
