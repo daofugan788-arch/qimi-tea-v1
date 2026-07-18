@@ -1,4 +1,4 @@
-// Hammer AI V0.7 配置。
+// Hammer AI V0.8 配置。
 // 静态演示默认使用本地生成器，打开网页即可体验，不会上传商品资料。
 // 正式接入模型时请通过服务端代理保护 API Key，不要把真实密钥提交到公开仓库。
 export const AI_CONFIG = Object.freeze({
