@@ -1,4 +1,12 @@
 import { CHAIN_STEP_STATUS } from "./chain-status.js";
+import { shouldRunBrowserSearch } from "./browser-search-planner.js";
+
+const BROWSER_TEMPLATE = Object.freeze([
+  { tool: "browser.search.plan", title: "规划公开页面搜索", description: "把目标拆成搜索、价格筛选、利润计算和证据任务" },
+  { tool: "browser.public.search", title: "Browser Agent 自动找货", description: "打开公开商品页面、搜索并读取公开信息" },
+  { tool: "browser.evidence.save", title: "保存价格与截图证据", description: "记录来源、时间、价格截图和公开商品信息" },
+  { tool: "browser.report.compose", title: "生成今日选品报告", description: "汇总候选、预计利润、推荐和证据" },
+]);
 
 const CHAIN_TEMPLATE = Object.freeze([
   { tool: "chain.product.discover", title: "寻找候选商品", description: "从现有商品库寻找尚未尝试的候选项" },
@@ -12,8 +20,11 @@ const CHAIN_TEMPLATE = Object.freeze([
 ]);
 
 export class ChainPlanner {
-  createPlan() {
-    return CHAIN_TEMPLATE.map((step, index) => ({
+  createPlan(goal, options = {}) {
+    const template = shouldRunBrowserSearch(goal, options)
+      ? [...BROWSER_TEMPLATE, ...CHAIN_TEMPLATE]
+      : CHAIN_TEMPLATE;
+    return template.map((step, index) => ({
       id: `CHAIN-S${index + 1}`,
       index,
       ...step,
