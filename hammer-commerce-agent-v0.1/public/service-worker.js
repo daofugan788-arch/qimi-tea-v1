@@ -1,4 +1,4 @@
-const CACHE_NAME = "hammer-commerce-agent-v0.2-shell";
+const CACHE_NAME = "hammer-commerce-agent-v0.3-shell";
 const APP_SHELL = ["./", "./manifest.webmanifest", "./icon.svg"];
 
 self.addEventListener("install", (event) => {
