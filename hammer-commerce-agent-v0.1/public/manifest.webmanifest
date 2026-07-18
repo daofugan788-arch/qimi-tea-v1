@@ -1,7 +1,7 @@
 {
   "name": "Hammer Commerce Agent",
   "short_name": "Hammer Agent",
-  "description": "自动计算商品利润、评分、风险和销售建议的 AI 选品员工",
+  "description": "自动计算商品利润、比较候选项并生成测试顺序的 AI 选品员工",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
