@@ -17,6 +17,40 @@ function money(value, currency) {
   return `${currency || "USD"} ${Number(value || 0).toFixed(2).replace(/\.00$/, "")}`;
 }
 
+function reportText(report) {
+  const products = report.products.map((product, index) => [
+    `${index + 1}. ${product.name}`,
+    `推荐：${product.decision}`,
+    `公开成本参考：${money(product.sourceCost, product.currency)}`,
+    `市场对比价：${money(product.marketPrice, product.currency)}`,
+    `预计利润：${money(product.estimatedProfit, product.currency)}`,
+    `原因：${product.reason}`,
+    `来源：${product.sourceUrl}`,
+  ].join("\n")).join("\n\n");
+  return [
+    "《Hammer Mission 执行报告》",
+    `任务：${report.goal}`,
+    `结果：${report.summary}`,
+    `扫描：${report.scannedCount} 个｜分析：${report.analyzedCount} 个｜TEST：${report.testCount} 个`,
+    "",
+    products,
+    "",
+    report.notice,
+  ].join("\n");
+}
+
+async function copyText(text) {
+  if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(text);
+  const input = document.createElement("textarea");
+  input.value = text;
+  input.style.position = "fixed";
+  input.style.opacity = "0";
+  document.body.appendChild(input);
+  input.select();
+  document.execCommand("copy");
+  input.remove();
+}
+
 function MissionView({ goal, events, running }) {
   if (!events.length) return null;
   const completed = new Set(events.map((event) => event.stepId));
@@ -48,7 +82,13 @@ function MissionView({ goal, events, running }) {
 }
 
 function ResultView({ report }) {
+  const [copied, setCopied] = useState(false);
   if (!report) return null;
+  async function copyReport() {
+    await copyText(reportText(report));
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1800);
+  }
   return (
     <section className="result-view">
       <div className="result-head">
@@ -84,6 +124,9 @@ function ResultView({ report }) {
       </div>
       {report.sourceErrors?.length > 0 && <p className="source-note">部分来源暂时不可用：{report.sourceErrors.join("；")}</p>}
       <p className="risk-note">{report.notice}</p>
+      <button className="copy-report-button" type="button" onClick={copyReport}>
+        {copied ? "✓ 完整报告已复制" : "复制完整报告"}
+      </button>
     </section>
   );
 }

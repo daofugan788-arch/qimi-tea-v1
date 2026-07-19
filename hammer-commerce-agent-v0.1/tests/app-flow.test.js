@@ -44,6 +44,11 @@ test("Android 首页可以输入一句任务、查看执行过程并获得结果
     fetch: { value: fetchMock, configurable: true },
     IS_REACT_ACT_ENVIRONMENT: { value: true, configurable: true },
   });
+  let copiedReport = "";
+  Object.defineProperty(window.navigator, "clipboard", {
+    value: { async writeText(value) { copiedReport = value; } },
+    configurable: true,
+  });
   const container = document.createElement("div");
   document.body.appendChild(container);
   const root = createRoot(container);
@@ -63,6 +68,11 @@ test("Android 首页可以输入一句任务、查看执行过程并获得结果
   assert.match(document.querySelector(".result-view").textContent, /便携商品/);
   assert.match(document.querySelector(".result-view").textContent, /预计利润/);
   assert.ok(JSON.parse(localStorage.getItem("hammer-os-android-last-report")));
+
+  await act(async () => { document.querySelector(".copy-report-button").click(); });
+  assert.match(document.querySelector(".copy-report-button").textContent, /已复制/);
+  assert.match(copiedReport, /Hammer Mission 执行报告/);
+  assert.match(copiedReport, /公开成本参考/);
 
   await act(async () => { root.unmount(); });
   window.close();
