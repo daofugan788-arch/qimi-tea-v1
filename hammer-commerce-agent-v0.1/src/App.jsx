@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { Share } from "@capacitor/share";
-import { executeMobileMission, loadLastMobileReport, MISSION_STEPS } from "./mobile-mission.js";
+import { executeMobileMission, loadLastMobileReport, loadMobileHistory, MISSION_STEPS } from "./mobile-mission.js";
 
 const DEFAULT_GOAL = "帮我找今天值得卖的商品";
 
@@ -151,12 +151,35 @@ function ResultView({ report }) {
   );
 }
 
+function HistoryView({ history, onSelect, onClose }) {
+  return (
+    <div className="history-layer" role="dialog" aria-modal="true" aria-label="任务历史">
+      <button className="history-backdrop" type="button" onClick={onClose} aria-label="关闭任务历史" />
+      <section className="history-panel">
+        <header><div><small>当前手机保存</small><h2>任务历史</h2></div><button type="button" onClick={onClose}>×</button></header>
+        <div className="history-list">
+          {history.length === 0 && <p>还没有完成的任务。</p>}
+          {history.map((item) => (
+            <button className="history-item" type="button" key={item.missionId} onClick={() => onSelect(item)}>
+              <span>✓</span>
+              <div><b>{item.goal}</b><small>{formatTime(item.completedAt)} · 扫描 {item.scannedCount} 个 · TEST {item.testCount} 个</small></div>
+              <i>›</i>
+            </button>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export default function App() {
   const restored = useMemo(() => loadLastMobileReport(), []);
   const [goal, setGoal] = useState(DEFAULT_GOAL);
   const [activeGoal, setActiveGoal] = useState(restored?.goal || "");
   const [events, setEvents] = useState(restored ? MISSION_STEPS.map((step) => ({ stepId: step.id, detail: "已完成" })) : []);
   const [report, setReport] = useState(restored);
+  const [history, setHistory] = useState(() => loadMobileHistory());
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState("");
 
@@ -173,6 +196,7 @@ export default function App() {
         setEvents((current) => [...current.filter((item) => item.stepId !== event.stepId), event]);
       });
       setReport(result);
+      setHistory(loadMobileHistory());
     } catch (missionError) {
       setError(missionError?.message || "Mission 执行失败，请检查网络后重试");
     } finally {
@@ -180,12 +204,23 @@ export default function App() {
     }
   }
 
+  function openHistoryReport(item) {
+    setReport(item);
+    setActiveGoal(item.goal);
+    setEvents(MISSION_STEPS.map((step) => ({ stepId: step.id, detail: "已完成" })));
+    setError("");
+    setHistoryOpen(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   return (
     <main className="android-app">
       <header className="app-header">
         <div className="logo">H</div>
         <div><b>Hammer OS</b><small><i /> AI 在线</small></div>
-        <span>ANDROID V1</span>
+        <button className="history-open-button" type="button" onClick={() => setHistoryOpen(true)} disabled={running}>
+          历史 <b>{history.length}</b>
+        </button>
       </header>
 
       <section className="home-view">
@@ -213,6 +248,7 @@ export default function App() {
       <ResultView report={report} />
       {report && <button className="again-button" type="button" onClick={() => { setEvents([]); setReport(null); setActiveGoal(""); window.scrollTo({ top: 0, behavior: "smooth" }); }}>＋ 输入新任务</button>}
       <footer>上次完成：{report ? formatTime(report.completedAt) : "暂无"} · 结果保存在当前手机</footer>
+      {historyOpen && <HistoryView history={history} onSelect={openHistoryReport} onClose={() => setHistoryOpen(false)} />}
     </main>
   );
 }

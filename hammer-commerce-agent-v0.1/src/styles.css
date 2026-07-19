@@ -18,7 +18,9 @@ button { -webkit-tap-highlight-color: transparent; }
 .app-header b { font-size: 15px; }
 .app-header small { display: flex; align-items: center; gap: 5px; margin-top: 3px; color: #73786e; font-size: 10px; font-weight: 750; }
 .app-header small i { width: 7px; height: 7px; border-radius: 50%; background: #58b83e; box-shadow: 0 0 0 3px #dff1d9; }
-.app-header > span { color: #8a8f84; font-size: 9px; font-weight: 900; letter-spacing: .12em; }
+.history-open-button { display: flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 10px; border: 1px solid #daddd4; border-radius: 11px; background: #fff; color: #555b50; font-size: 10px; font-weight: 850; }
+.history-open-button b { display: grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 999px; background: #171a15; color: #d9ff54; font-size: 9px; }
+.history-open-button:disabled { opacity: .5; }
 
 .home-view { padding: 34px 0 24px; }
 .eyebrow, .section-label { color: #6a8509; font-size: 11px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
@@ -88,6 +90,22 @@ button { -webkit-tap-highlight-color: transparent; }
 .copy-report-button { background: #e5e8df; color: #1a1e13; }
 .share-report-button { background: #d9ff54; color: #1a1e13; }
 .android-app > footer { margin-top: 25px; color: #969b91; font-size: 9px; text-align: center; }
+
+.history-layer { position: fixed; z-index: 20; inset: 0; display: flex; align-items: flex-end; justify-content: center; }
+.history-backdrop { position: absolute; inset: 0; width: 100%; border: 0; background: rgba(14, 17, 12, .55); }
+.history-panel { z-index: 1; width: min(680px, 100%); max-height: 78vh; padding: 20px 16px calc(24px + env(safe-area-inset-bottom)); border-radius: 24px 24px 0 0; background: #f5f6f0; overflow: auto; }
+.history-panel > header { display: flex; align-items: center; justify-content: space-between; padding: 0 3px 15px; }
+.history-panel > header small { color: #858b80; font-size: 9px; font-weight: 750; }
+.history-panel > header h2 { margin: 3px 0 0; font-size: 24px; }
+.history-panel > header > button { width: 36px; height: 36px; border: 0; border-radius: 50%; background: #e4e7df; color: #555b51; font-size: 22px; }
+.history-list { display: grid; gap: 8px; }
+.history-list > p { padding: 22px; border-radius: 16px; background: #fff; color: #777d72; text-align: center; font-size: 11px; }
+.history-item { display: flex; align-items: center; width: 100%; gap: 11px; padding: 14px; border: 1px solid #e0e3db; border-radius: 15px; background: #fff; color: #181b16; text-align: left; }
+.history-item > span { display: grid; flex: 0 0 27px; place-items: center; width: 27px; height: 27px; border-radius: 50%; background: #dff5a0; color: #466000; font-size: 11px; font-weight: 950; }
+.history-item > div { display: flex; flex: 1; min-width: 0; flex-direction: column; }
+.history-item b { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.history-item small { margin-top: 5px; color: #8a9085; font-size: 9px; }
+.history-item i { color: #92978d; font-size: 20px; font-style: normal; }
 
 @media (min-width: 600px) {
   .android-app { padding-left: 28px; padding-right: 28px; }
