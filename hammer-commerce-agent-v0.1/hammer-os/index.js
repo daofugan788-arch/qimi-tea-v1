@@ -35,6 +35,9 @@ export function createHammerOS({ plugins = [], memoryAdapter = undefined, now = 
     plannerRegistry,
     eventBus,
     memoryService,
+    orchestrator,
+    runtime,
+    scheduler,
   });
   plugins.forEach((plugin) => pluginManager.install(plugin));
   return {
@@ -53,5 +56,6 @@ export function createHammerOS({ plugins = [], memoryAdapter = undefined, now = 
 }
 
 export { BaseAgent } from "./agents/base-agent.js";
+export { JsonFileMemoryAdapter } from "./core/memory/json-file-memory-adapter.js";
 export { definePlugin } from "./plugins/plugin-contract.js";
 export { TOOL_RISK, TOOL_TYPE } from "./tools/tool-types.js";

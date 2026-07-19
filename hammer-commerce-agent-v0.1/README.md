@@ -1,137 +1,115 @@
-# Hammer OS
+# Hammer Commerce Agent MVP V0.7
 
-**Agent Operating System · Architecture Freeze No.001**
+个人赚钱测试版，运行在现有 Hammer OS 上。目标是让用户只输入一句话，系统自动完成公开商品收集、完整成本计算、TEST/WATCH/REJECT 决策、商品资料生成和今日报告。
 
-Hammer 不再是 Commerce App。系统内核固定为 Orchestrator、Runtime、Agent、Tool、Plugin 五层，Commerce 是第一个 Plugin。
-
-本阶段冻结所有新页面、新业务功能、新评分模型、新选品策略和新发布流程。完整架构图、目录、事件流与边界规则见 [`hammer-os/ARCHITECTURE.md`](hammer-os/ARCHITECTURE.md)。
-
-## Architecture Freeze No.001 已交付
-
-- Orchestrator：Mission 创建、Planner 调度、优先级与生命周期入口
-- Runtime：Mission、Task、Worker、Retry、Schedule、Queue、Checkpoint、Cancel
-- EventBus：Agent 禁止互相调用，事件统一送达 Decision、Memory、Logger 和 Mission 投影
-- Memory Service：Agent 与 Runtime Checkpoint 使用统一读写服务
-- Decision Service：通用 Policy 内核，不包含 Commerce 判断
-- BaseAgent：统一生命周期、Event、Memory、Decision 和 Tool Registry 接口
-- Tool Registry：统一 Browser、OCR、Search、Excel、Filesystem、Database、Notification、LLM 类型
-- Plugin Manager：统一注册 Agent、Tool、Planner、Decision Policy 和 Event Subscription
-- Commerce Plugin：现有 Commerce 通过唯一兼容桥接入，不再作为系统本身
-- Architecture Test：验证新增 `FinanceAgent extends BaseAgent` 无需修改 Runtime
-
-## 最高开发原则
-
-> 每新增一个功能，都必须减少用户至少一次操作。
-
-每个 Sprint 必须提交改造前操作数、改造后操作数和实际减少数。不能减少人工操作的页面、图表、评分或装饰性功能暂不开发。
-
-## Sprint 05：Browser Agent Real Execution
-
-已完成真实浏览执行：
-
-- `BrowserSearchPlanner`：从一句目标提取关键词、最高采购价和最低预计利润
-- `Browser Service`：创建 `WAITING → RUNNING → SUCCESS/FAILED` 浏览任务并支持查询
-- Playwright + Chromium 真正打开服务端白名单公开商品页面
-- 读取公开商品名称、价格、图片、来源链接，以及页面公开的销量、评价数量和评分字段
-- `EvidenceFileStore`：保存整页截图、逐商品价格截图和完整 JSON 执行证据
-- `ProductSource`：保存来源平台、URL、抓取时间、截图、价格和标题
-- `EvidenceStore`：手机端保存证据索引、来源和采集时间
-- 自动把公开页面候选写入商品库并继续利润筛选
-- 自动生成《今日选品报告》
-- 报告包含来源价、市场参考、预计利润、推荐、原因和公开来源
-- 浏览服务未连接、需要登录、出现验证或没有结果时安全暂停，不生成假数据
-- 不支持自动登录、发布、下单或付款
-
-自动流程：
+## 已完成闭环
 
 ```text
-用户输入一句找货目标
-  → Search Planner 自动拆解
-  → Playwright 打开服务端白名单公开页面
-  → 搜索并读取公开商品信息
-  → 保存来源、时间、图片和价格截图
-  → 筛选价格与预计利润
-  → 保存候选商品
-  → 生成《今日选品报告》
-  → 原任务链继续推进
+一句话目标
+  → Orchestrator 创建 Mission
+  → Product Search Agent 读取白名单公开商品目录
+  → Data Tool 统一商品、价格、图片和来源链接
+  → Profit 分析采购价 + 运费 + 平台成本 + 其他成本
+  → Decision Service 输出 TEST / WATCH / REJECT 与原因
+  → Content Agent 生成标题、描述、卖点、图片建议和客服话术
+  → Memory Service 保存 Opportunity Database、报告与学习结果
+  → 输出《今日商业机会报告》
 ```
 
-验收标准：
+Commerce 仍是 Plugin；Runtime、Agent、Memory、Tool Registry 和 Decision Service 没有被业务代码替代。V0.7 不执行登录、发布、付款或交易。
 
-```text
-以前：搜索 → 看价格 → 比较 → 算利润 → 写记录
-现在：输入一句话 → 等待报告
-人工操作：5 步 → 1 步，减少 4 步
-```
-
-## Browser Tool 运行方式
-
-前端仍是移动端 PWA。真实浏览器运行在独立的轻量 Node.js 服务中，避免手机浏览器的跨域限制。
+## 手机一句话入口
 
 ```bash
 npm install
-npm run browser:serve
+npm run employee:serve
 ```
 
-前端构建时配置：
+手机浏览器打开：
 
 ```text
-VITE_BROWSER_AGENT_URL=https://你的-browser-agent-地址
+http://服务器地址:8788
 ```
 
-容器部署：
+页面只有一个目标输入框。完成后显示商品列表、成本/利润、推荐排序、可复制发布资料和今日报告。
+
+API：
+
+```text
+POST /api/missions          创建并执行一句话 Mission
+GET  /api/reports/latest    获取最新报告
+GET  /health               查看员工心跳
+```
+
+公网部署可设置 `HAMMER_ACCESS_TOKEN`；带口令访问页面时使用 `/?token=你的口令`。
+
+## 命令行与每日员工
+
+立即执行一句话：
 
 ```bash
-docker build -f Dockerfile.browser-agent -t hammer-browser-agent .
-docker run -p 8787:8787 --env-file .env.browser hammer-browser-agent
+npm run employee:ask -- "帮我找赚钱商品"
+npm run employee:ask -- "找成本30元以内，利润20元以上的小商品"
 ```
 
-`BROWSER_SOURCE_CONFIG_JSON` 只在服务端配置允许访问的公开来源与页面选择器。客户端不能提交任意 URL，基础版不会绕过登录、验证码或平台安全机制。
+作为长期员工运行：
 
-默认的 Webscraper 测试商城仅用于验证 Browser Tool 链路，并在报告中明确标记为测试源。接入真实商业平台前，应确认平台公开访问规则并建立专用白名单适配器。
+```bash
+npm run employee:run
+```
 
-## V1.0 其他已完成能力
+进程每分钟写心跳，并在 `Asia/Shanghai` 每日 08:00 幂等创建 Mission；08:00 后启动会自动补跑当天任务。机会库、Checkpoint、学习反馈和日报持久化到 `data/hammer-memory.json`。
 
-- 连续 Task Chain、失败候选自动重试和断点恢复
-- 一句话商品资料解析、分析、保存并自动恢复任务链
-- 商品内容与图片任务准备
-- 发布确认、成交等待、利润记录和主人日报
-- PWA 手机端安装与本机持久化
+记录真实结果，供下一次决策调整权重：
 
-## 核心模块
+```bash
+node server/commerce-employee-worker.js --record-outcome "手机支架" SOLD 22
+```
+
+## 真实公开数据源
+
+默认每天只读取三个公开商品目录：Kikkerland、ColourPop、BlendJet。不会绕过登录、验证码或安全机制，也不会用生成数据冒充商品。
+
+可用服务端变量替换成自己的允许来源：
 
 ```text
-src/core/browser-search-planner.js     Search Planner
-src/core/browser-agent-client.js       手机端 Browser Gateway 客户端
-src/core/evidence-store.js             手机端证据索引
-src/core/product-judgment-engine.js     商品证据判断引擎
-src/tools/browser-tools.js             Browser/Evidence/Report Tools
-server/public-browser-runner.js        Playwright 公开页面执行器
-server/browser-agent-server.js         Browser Agent HTTP 服务
-server/browser-task-store.js           浏览任务状态
-server/chromium-runtime.js              可部署 Chromium 运行时
-server/evidence-file-store.js          截图与 JSON 证据保存
-Dockerfile.browser-agent               浏览服务容器
+COMMERCE_SHOPIFY_SOURCES_JSON=[{"name":"供应源A","baseUrl":"https://example.com","currency":"CNY"}]
 ```
+
+公开目录中的当前价被视为采购参考价，`compare_at_price` 被视为市场参考价。报告会计入默认运费和平台费，但它只是测试机会，不是利润保证；发布前仍需核对真实采购、库存、运费和平台规则。
+
+## 主要配置
+
+复制 `.env.commerce.example` 后按部署环境设置：
+
+```text
+COMMERCE_SHIPPING_COST=5
+COMMERCE_PLATFORM_RATE=0.05
+COMMERCE_OTHER_COST=0
+COMMERCE_DAILY_TIMEZONE=Asia/Shanghai
+COMMERCE_DAILY_HOUR=8
+HAMMER_ACCESS_TOKEN=
+BASE_URL=
+API_KEY=
+MODEL=
+```
+
+配置 OpenAI 兼容的 `BASE_URL / API_KEY / MODEL` 后，Content Tool 使用模型生成资料；未配置或接口失败时使用安全模板，并明确标记 `SAFE_TEMPLATE`，不会编造库存、销量或发货承诺。
 
 ## 验证
 
 ```bash
 npm test
 npm run build
+npm run employee:ask -- "帮我找赚钱商品"
 ```
 
-真实执行验收已通过：Browser Service 打开 Webscraper 公开测试商城，自动抓取 3 个商品，保存 1 张整页截图、3 张商品截图和 JSON 会话证据，并由前端 Task Chain 生成《今日选品报告》。该来源只用于验证真实浏览闭环；接入商业平台时仍需先确认公开访问规则并配置平台白名单适配器。
+- 自动测试：31/31 通过
+- 手机入口：HTTP 200
+- 真实 API Mission：已返回商品列表、利润分析、决策、发布资料和日报
+- 真实执行报告：[`deliverables/V0.7_REAL_REPORT.md`](deliverables/V0.7_REAL_REPORT.md)
+- Hammer OS 架构说明：[`hammer-os/ARCHITECTURE.md`](hammer-os/ARCHITECTURE.md)
 
-## Sprint 06：商品判断 Agent
+## V0.8 边界
 
-Browser Agent 找到商品后，新增 `browser.product.judge` 自动判断步骤，不再让用户逐个查看和选择：
-
-- `TEST`：利润、利润率、来源证据和公开需求信号达到门槛，自动进入商品资料生成
-- `WATCH`：存在利润空间，但销量、评价或成交价证据不足，继续找同类来源补证据
-- `REJECT`：无正利润、利润缓冲过低或公开评分风险明显，停止生成资料并尝试下一个商品
-- 判断结果写回商品库，保存理由、风险、置信度、门槛结果和下一步动作
-- 不增加新页面，判断结果直接合并进《今日选品报告》
-- 自动发布仍保持人工确认，不进行登录、发布、下单或付款
-
-验收结果：真实公开商品抓取后，Agent 自动选择 `Nokia 123` 为 `TEST`，继续生成商品资料并停在安全发布确认点。人工流程由“搜索、打开、记录、算利润、判断、写报告”6步减少为“一句话等待报告”1步。
+V0.8 再增强 Browser Agent，增加更多公开网页适配与截图证据。V0.7 不继续消耗时间优化浏览器底层，也不开发自动登录、自动发布、自动付款、自动交易或复杂 UI。

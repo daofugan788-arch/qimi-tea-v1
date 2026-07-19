@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#11130f" />
+  <title>Hammer Commerce Employee</title>
+  <style>
+    :root{font-family:Inter,"PingFang SC",system-ui,sans-serif;color:#171a15;background:#f4f5ef}*{box-sizing:border-box}body{margin:0}main{width:min(720px,100%);margin:auto;padding:24px 16px 80px}.brand{font-size:12px;font-weight:900;letter-spacing:.12em}.brand i{color:#7aa100;font-style:normal}h1{margin:18px 0 8px;font-size:34px;line-height:1.08;letter-spacing:-.05em}.lead{margin:0 0 20px;color:#64685f;line-height:1.6}.command{padding:12px;border:1px solid #dcdfd5;border-radius:22px;background:#fff;box-shadow:0 18px 50px #29311d12}textarea{width:100%;min-height:104px;padding:10px;border:0;outline:0;resize:none;font:700 18px/1.55 inherit}button{border:0;border-radius:14px;background:#151712;color:#fff;font-weight:850;cursor:pointer}.run{width:100%;height:54px;font-size:16px}.run:disabled{opacity:.5}.examples{display:flex;gap:8px;overflow:auto;padding:12px 0 0}.examples button{flex:0 0 auto;padding:9px 12px;background:#e9ecdF;color:#3c4235;font-size:11px}.status{min-height:26px;padding:14px 4px 0;color:#6c7166;font-size:13px}.report{display:none;margin-top:18px}.report.show{display:block}.summary{padding:22px;border-radius:22px;background:#171a15;color:#fff}.summary small{color:#a8d900;font-weight:900}.summary h2{margin:8px 0;font-size:25px}.summary p{margin:0;color:#c8ccc2;line-height:1.6}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}.metrics div{padding:14px 8px;border-radius:14px;background:#282c25;text-align:center}.metrics b,.metrics span{display:block}.metrics b{font-size:22px}.metrics span{margin-top:3px;color:#9ca395;font-size:10px}.card{margin-top:12px;padding:18px;border:1px solid #dfe2d8;border-radius:19px;background:#fff}.card header{display:flex;align-items:start;gap:12px}.card img{width:76px;height:76px;border-radius:13px;object-fit:cover;background:#ecefe6}.card h3{margin:0 0 7px;font-size:16px}.pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#e9f8bd;color:#405500;font-size:10px;font-weight:900}.watch{background:#fff0bd;color:#765500}.reject{background:#f7d2d2;color:#7a2424}.money{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:14px 0}.money div{padding:10px;border-radius:11px;background:#f4f5ef}.money small,.money b{display:block}.money small{color:#777d71;font-size:9px}.money b{margin-top:4px;font-size:13px}.reason{color:#5f655a;font-size:12px;line-height:1.65}.source{color:#5c7900;font-size:11px;text-decoration:none}.material pre{white-space:pre-wrap;font:12px/1.65 inherit;color:#4f554b}.copy{width:100%;padding:12px;margin-top:8px}.empty{padding:20px;border-radius:18px;background:#fff;color:#656b61}footer{margin-top:24px;color:#92978e;font-size:10px;line-height:1.6}
+  </style>
+</head>
+<body><main>
+  <div class="brand">HAMMER <i>COMMERCE EMPLOYEE</i> · V0.7</div>
+  <h1>告诉我今天<br>想找什么商品</h1>
+  <p class="lead">一句话开始。Agent 自动搜索、算利润、做决定、写资料和生成日报。</p>
+  <section class="command">
+    <textarea id="goal" placeholder="例如：找成本30元以内，利润20元以上的小商品">帮我找赚钱商品</textarea>
+    <button class="run" id="run">开始执行 Mission</button>
+    <div class="examples"><button>找成本30元以内，利润20元以上的小商品</button><button>找今天适合个人卖的高利润小商品</button><button>帮我找赚钱商品</button></div>
+  </section>
+  <div class="status" id="status"></div>
+  <section class="report" id="report"></section>
+  <footer>只读取允许访问的公开商品目录；不登录、不发布、不付款。公开标价和参考价不等于真实成交利润，测试前请核对采购、运费和库存。</footer>
+</main><script>
+  const q=s=>document.querySelector(s), esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+  const token=new URLSearchParams(location.search).get('token')||''; const api=p=>`${p}${token?`?token=${encodeURIComponent(token)}`:''}`;
+  q('.examples').onclick=e=>{if(e.target.tagName==='BUTTON')q('#goal').value=e.target.textContent};
+  const materialText=m=>`${m.title}\n\n${m.description}\n\n卖点：\n${m.sellingPoints.map(x=>`- ${x}`).join('\n')}\n\n图片建议：\n${m.imageAdvice.map(x=>`- ${x}`).join('\n')}\n\n客服话术：\n价格：${m.customerService.price}\n议价：${m.customerService.discount}\n发货：${m.customerService.shipping}\n库存：${m.customerService.stock}`;
+  function render(r){const items=r.productList||[], mats=r.publishingMaterials||[];q('#report').className='report show';q('#report').innerHTML=`<section class="summary"><small>今日商业机会报告</small><h2>${esc(r.summary)}</h2><p>${esc(r.nextAction)}</p><div class="metrics"><div><b>${r.scannedCount}</b><span>扫描商品</span></div><div><b>${r.filteredCount}</b><span>通过筛选</span></div><div><b>${r.recommendedCount}</b><span>推荐 TEST</span></div></div></section>${items.map(x=>`<article class="card"><header>${x.image?`<img src="${esc(x.image)}" alt="">`:''}<div><span class="pill ${x.decision==='WATCH'?'watch':x.decision==='REJECT'?'reject':''}">${esc(x.decision)}</span><h3>${esc(x.name)}</h3><a class="source" href="${esc(x.source_url)}" target="_blank" rel="noreferrer">${esc(x.source)} ↗</a></div></header><div class="money"><div><small>采购+成本</small><b>${esc(x.currency)} ${x.total_cost}</b></div><div><small>参考售价</small><b>${esc(x.currency)} ${x.market_price}</b></div><div><small>预计利润</small><b>${esc(x.currency)} ${x.profit}</b></div></div><p class="reason">${esc(x.reason)}</p></article>`).join('')}${mats.map((m,i)=>`<article class="card material"><span class="pill">可复制资料 ${i+1}</span><h3>${esc(m.productName)}</h3><pre>${esc(materialText(m))}</pre><button class="copy" data-copy="${i}">复制全部资料</button></article>`).join('')||'<div class="empty">本次没有达到 TEST 门槛的商品，因此没有生成发布资料。</div>'}`;q('#report').onclick=async e=>{if(e.target.dataset.copy!==undefined){await navigator.clipboard.writeText(materialText(mats[Number(e.target.dataset.copy)]));e.target.textContent='已复制'}}}
+  q('#run').onclick=async()=>{const goal=q('#goal').value.trim();if(!goal)return;q('#run').disabled=true;q('#status').textContent='Agent 正在搜索公开商品并生成报告…';try{const res=await fetch(api('/api/missions'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({goal})});const data=await res.json();if(!res.ok)throw new Error(data.error);render(data.report);q('#status').textContent='Mission 已完成';}catch(e){q('#status').textContent=`执行失败：${e.message}`;}finally{q('#run').disabled=false}};
+  fetch(api('/api/reports/latest')).then(r=>r.ok?r.json():null).then(x=>x?.report&&render(x.report)).catch(()=>{});
+</script></body></html>

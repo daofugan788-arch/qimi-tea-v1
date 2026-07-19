@@ -28,7 +28,23 @@ export class RuntimeWorker {
       decisionService: this.decisionService,
     });
     try {
-      const result = await agent.run(task);
+      const dependencyOutputs = Object.fromEntries(
+        (task.dependsOn || []).map((dependencyId) => [
+          dependencyId,
+          mission.tasks.find((item) => item.id === dependencyId)?.output ?? null,
+        ]),
+      );
+      const result = await agent.run({
+        ...task,
+        dependencyOutputs,
+        mission: {
+          id: mission.id,
+          type: mission.type,
+          goal: mission.goal,
+          input: mission.input,
+          metadata: mission.metadata,
+        },
+      });
       this.status = WORKER_STATUS.SUCCESS;
       return result;
     } catch (error) {

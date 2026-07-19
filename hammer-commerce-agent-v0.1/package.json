@@ -1,7 +1,7 @@
 {
   "name": "hammer-os",
   "private": true,
-  "version": "1.0.0-architecture-freeze.1",
+  "version": "0.7.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
@@ -9,7 +9,13 @@
     "preview": "vite preview --host 0.0.0.0",
     "test": "node --import tsx --test",
     "test:architecture": "node --import tsx --test tests/hammer-os.test.js",
-    "browser:serve": "node server/browser-agent-server.js"
+    "test:sprint07": "node --import tsx --test tests/commerce-employee.test.js",
+    "browser:serve": "node server/browser-agent-server.js",
+    "employee:run": "node server/commerce-employee-worker.js",
+    "employee:serve": "node server/commerce-mvp-server.js",
+    "employee:once": "node server/commerce-employee-worker.js --once",
+    "employee:ask": "node server/commerce-employee-worker.js --ask",
+    "employee:health": "node server/commerce-employee-worker.js --health"
   },
   "dependencies": {
     "@sparticuz/chromium": "149.0.0",

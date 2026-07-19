@@ -1,11 +1,14 @@
 export class PluginManager {
-  constructor({ agentRegistry, toolRegistry, decisionService, plannerRegistry, eventBus, memoryService } = {}) {
+  constructor({ agentRegistry, toolRegistry, decisionService, plannerRegistry, eventBus, memoryService, orchestrator, runtime, scheduler } = {}) {
     this.agentRegistry = agentRegistry;
     this.toolRegistry = toolRegistry;
     this.decisionService = decisionService;
     this.plannerRegistry = plannerRegistry;
     this.eventBus = eventBus;
     this.memoryService = memoryService;
+    this.orchestrator = orchestrator;
+    this.runtime = runtime;
+    this.scheduler = scheduler;
     this.plugins = new Map();
     this.unsubscribers = new Map();
   }
@@ -30,6 +33,9 @@ export class PluginManager {
       memoryService: this.memoryService,
       toolRegistry: this.toolRegistry,
       decisionService: this.decisionService,
+      orchestrator: this.orchestrator,
+      runtime: this.runtime,
+      scheduler: this.scheduler,
     });
     void this.eventBus.publish("plugin.installed", { plugin: plugin.manifest }, { source: "plugins.manager" });
     return plugin.manifest;
