@@ -10,13 +10,14 @@ flowchart TD
   B --> M["Employee Message Bus"]
   B --> K["Shared Knowledge Center"]
   B --> H["30秒 Heartbeat"]
+  B --> T["Employee Tool Gateway\n授权 · 审批 · 审计"]
 ```
 
 ## 冻结边界
 
 1. Supervisor 只管理 `BaseEmployee`，不导入 Commerce、Research、Finance 等具体员工。
 2. 新员工只需 `class ResearchEmployee extends BaseEmployee`，不修改 Employee Runtime 或 Hammer Core。
-3. Employee Context 只暴露自己的 Workspace、Message Bus 和 Knowledge Center；不暴露 Runtime、Memory Service 或 Tool Registry。
+3. Employee Context 只暴露自己的 Workspace、Message Bus、Knowledge Center 和受控 Tool Gateway；不暴露 Runtime、Memory Service 或原始 Tool Registry。
 4. Employee 之间禁止持有或调用另一个 Employee 实例，协作必须发送 `EmployeeMessage`。
 5. 每个 Employee 拥有独立 Workspace；共享事实统一写入 Knowledge Center。
 6. Supervisor 通过 Heartbeat 和进度时间判断 `HEALTHY / WAITING / STUCK / WAITING_TOO_LONG / NEED_HELP / STALE / DEAD`。
@@ -106,6 +107,26 @@ flowchart TD
 
 Watchdog 不写任何 Commerce 规则，也不直接代替 Employee 做业务决策。
 
+## Employee Tool Gateway
+
+Employee 不能直接保存 Tool Registry。`BaseEmployee.useTool()` 只能访问 Employee Context 内的受控 Gateway。
+
+```mermaid
+flowchart TD
+  E["Employee.useTool"] --> G["Tool Gateway"]
+  G --> P{"Allowlist + Risk"}
+  P -->|"LOW / MEDIUM"| R["Tool Registry"]
+  P -->|"HIGH"| A["Supervisor Approval"]
+  A -->|"Approved"| R
+```
+
+- 默认权限为空，未声明的 Tool 直接拒绝。
+- Employee 通过 `static allowedTools = ["public.search"]` 声明工具白名单。
+- 也可以使用 `TYPE:BROWSER` 授权某个 Tool Type。
+- `HIGH` 风险工具自动进入审批队列，Employee Lifecycle 进入 `WAITING`。
+- 审批记录写入 `employee.tool-approvals`；密码、Token、API Key、Cookie 等字段持久化前自动脱敏。
+- 重启后旧的 `PENDING` 请求自动转为 `EXPIRED`，避免误执行。
+
 ## Knowledge Center
 
 共享类别固定为：
@@ -136,6 +157,9 @@ hammer-os/employees/
 │   └── employee-message-bus.js
 ├── heartbeat/
 │   └── employee-heartbeat-monitor.js
+├── tools/
+│   ├── employee-tool-gateway.js
+│   └── employee-tool-approval-service.js
 ├── knowledge/
 │   └── knowledge-center.js
 └── index.js

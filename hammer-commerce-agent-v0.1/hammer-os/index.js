@@ -11,7 +11,14 @@ import { PluginManager } from "./plugins/plugin-manager.js";
 import { ToolRegistry } from "./tools/tool-registry.js";
 import { createEmployeeFramework } from "./employees/index.js";
 
-export function createHammerOS({ plugins = [], memoryAdapter = undefined, now = undefined, employeeNow = undefined, employeeHealth = {} } = {}) {
+export function createHammerOS({
+  plugins = [],
+  memoryAdapter = undefined,
+  now = undefined,
+  employeeNow = undefined,
+  employeeHealth = {},
+  employeeTools = {},
+} = {}) {
   const eventBus = new EventBus();
   const memoryService = new MemoryService({ adapter: memoryAdapter, eventBus });
   const decisionService = new DecisionService({ eventBus });
@@ -32,7 +39,9 @@ export function createHammerOS({ plugins = [], memoryAdapter = undefined, now = 
   const employeeFramework = createEmployeeFramework({
     eventBus,
     memoryService,
+    toolRegistry,
     health: employeeHealth,
+    toolApproval: employeeTools.approval || {},
     ...(employeeNow ? { now: employeeNow } : {}),
   });
   const pluginManager = new PluginManager({
@@ -49,6 +58,7 @@ export function createHammerOS({ plugins = [], memoryAdapter = undefined, now = 
     employeeRuntime: employeeFramework.employeeRuntime,
     employeeMessageBus: employeeFramework.employeeMessageBus,
     knowledgeCenter: employeeFramework.knowledgeCenter,
+    employeeToolApprovalService: employeeFramework.employeeToolApprovalService,
   });
   plugins.forEach((plugin) => pluginManager.install(plugin));
   return {

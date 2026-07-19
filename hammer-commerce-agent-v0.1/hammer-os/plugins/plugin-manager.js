@@ -1,5 +1,5 @@
 export class PluginManager {
-  constructor({ agentRegistry, toolRegistry, decisionService, plannerRegistry, eventBus, memoryService, orchestrator, runtime, scheduler, supervisor = null, employeeRuntime = null, employeeMessageBus = null, knowledgeCenter = null } = {}) {
+  constructor({ agentRegistry, toolRegistry, decisionService, plannerRegistry, eventBus, memoryService, orchestrator, runtime, scheduler, supervisor = null, employeeRuntime = null, employeeMessageBus = null, knowledgeCenter = null, employeeToolApprovalService = null } = {}) {
     this.agentRegistry = agentRegistry;
     this.toolRegistry = toolRegistry;
     this.decisionService = decisionService;
@@ -13,6 +13,7 @@ export class PluginManager {
     this.employeeRuntime = employeeRuntime;
     this.employeeMessageBus = employeeMessageBus;
     this.knowledgeCenter = knowledgeCenter;
+    this.employeeToolApprovalService = employeeToolApprovalService;
     this.plugins = new Map();
     this.unsubscribers = new Map();
   }
@@ -48,6 +49,7 @@ export class PluginManager {
       employeeRuntime: this.employeeRuntime,
       employeeMessageBus: this.employeeMessageBus,
       knowledgeCenter: this.knowledgeCenter,
+      employeeToolApprovalService: this.employeeToolApprovalService,
     });
     void this.eventBus.publish("plugin.installed", { plugin: plugin.manifest }, { source: "plugins.manager" });
     return plugin.manifest;

@@ -49,6 +49,12 @@ export class ToolRegistry {
     }
   }
 
+  describe(name) {
+    const entry = this.tools.get(name);
+    if (!entry) return null;
+    return { name, ...entry.metadata };
+  }
+
   list({ type = null } = {}) {
     return [...this.tools.entries()]
       .map(([name, entry]) => ({ name, ...entry.metadata }))

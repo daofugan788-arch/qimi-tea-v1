@@ -3,6 +3,7 @@ import { EMPLOYEE_STATE } from "./employee-state.js";
 
 export class BaseEmployee {
   static employeeType = "employee";
+  static allowedTools = Object.freeze([]);
 
   constructor({
     id,
@@ -99,6 +100,15 @@ export class BaseEmployee {
       this.context.communication.request({ from: this.id, to, type, payload }, options),
       `等待 ${to} 回复 ${type}`,
     );
+  }
+
+  useTool(name, input = {}) {
+    const execution = this.context.tools.execute(name, input, {
+      missionId: this.context.workspace.mission?.id || null,
+    });
+    return this.context.tools.requiresApproval(name)
+      ? this.waitFor(execution, `等待 Supervisor 批准 Tool ${name}`)
+      : execution;
   }
 
   async waitFor(promise, reason = "等待外部结果") {

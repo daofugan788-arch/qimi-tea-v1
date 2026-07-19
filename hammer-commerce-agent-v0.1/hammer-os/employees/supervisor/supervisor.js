@@ -1,6 +1,7 @@
 import { BaseEmployee } from "../core/base-employee.js";
 import { EmployeeContext } from "../core/employee-context.js";
 import { EmployeeHeartbeatMonitor } from "../heartbeat/employee-heartbeat-monitor.js";
+import { EmployeeToolGateway } from "../tools/employee-tool-gateway.js";
 
 function employeeId(type) {
   return `EMP-${String(type || "employee").toUpperCase()}-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
@@ -19,6 +20,8 @@ export class Supervisor {
     eventBus = null,
     memoryService = null,
     heartbeatMonitor = null,
+    toolRegistry = null,
+    toolApprovalService = null,
     watchdogIntervalMs = 30_000,
     autoStartWatchdog = true,
   } = {}) {
@@ -30,6 +33,8 @@ export class Supervisor {
     this.eventBus = eventBus;
     this.memoryService = memoryService;
     this.heartbeatMonitor = heartbeatMonitor || new EmployeeHeartbeatMonitor();
+    this.toolRegistry = toolRegistry;
+    this.toolApprovalService = toolApprovalService;
     this.employeeTypes = new Map();
     this.activeIncidents = new Map();
     this.watchdogIntervalMs = Math.max(10, Number(watchdogIntervalMs) || 30_000);
@@ -54,7 +59,19 @@ export class Supervisor {
       ? await this.workspaceFactory.restore(id, type)
       : this.workspaceFactory.create(id, type);
     if (options.restore) workspace.recoverIncompleteMission();
-    const context = new EmployeeContext({ workspace, messageBus: this.messageBus, knowledgeCenter: this.knowledgeCenter });
+    const toolGateway = new EmployeeToolGateway({
+      employeeId: id,
+      employeeType: type,
+      toolRegistry: this.toolRegistry,
+      approvalService: this.toolApprovalService,
+      allowedTools: options.allowedTools || EmployeeClass.allowedTools || [],
+    });
+    const context = new EmployeeContext({
+      workspace,
+      messageBus: this.messageBus,
+      knowledgeCenter: this.knowledgeCenter,
+      toolGateway,
+    });
     const employee = new EmployeeClass({
       ...(options.recoveryOptions || {}),
       ...options,
@@ -70,6 +87,7 @@ export class Supervisor {
       hiredAt: options.hiredAt || new Date().toISOString(),
       recoveredAt: options.restore ? new Date().toISOString() : null,
       recoveryOptions: options.recoveryOptions || {},
+      allowedTools: [...toolGateway.allowedTools],
     });
     await this.eventBus?.publish("employee.supervisor.hired", { employee: employee.status() }, { source: "employee.supervisor" });
     if (workspace.queue.length && employee.state === "IDLE") void this.runtime.drain(employee.id);
@@ -101,6 +119,7 @@ export class Supervisor {
   async retire(employeeId, reason = "retired-by-supervisor") {
     const employee = this.runtime.get(employeeId);
     const snapshot = employee?.snapshot() || null;
+    await this.toolApprovalService?.rejectForEmployee(employeeId, reason);
     await this.resolveIncident(employeeId, "employee-retired");
     const status = await this.runtime.retire(employeeId, reason);
     this.heartbeatMonitor.remove(employeeId);
@@ -140,6 +159,7 @@ export class Supervisor {
 
   async recover() {
     if (!this.memoryService) return [];
+    await this.toolApprovalService?.expirePersisted("process-restarted");
     const recovered = [];
     for (const entry of await this.memoryService.list("employee.roster")) {
       const record = entry.value;
@@ -158,6 +178,7 @@ export class Supervisor {
           snapshot: record.snapshot,
           hiredAt: record.hiredAt,
           recoveryOptions: record.recoveryOptions || {},
+          allowedTools: record.allowedTools,
         });
         recovered.push({ id: record.id, type: record.type, status: "RECOVERED", employee: status });
       } catch (error) {
@@ -175,6 +196,20 @@ export class Supervisor {
 
   list() {
     return this.runtime.list().map((employee) => ({ ...employee, health: this.heartbeatMonitor.status(employee.id) }));
+  }
+
+  pendingToolApprovals() {
+    return this.toolApprovalService?.listPending() || [];
+  }
+
+  approveTool(requestId, options = {}) {
+    if (!this.toolApprovalService) throw new Error("Employee Tool Approval Service 未启动");
+    return this.toolApprovalService.approve(requestId, options);
+  }
+
+  rejectTool(requestId, options = {}) {
+    if (!this.toolApprovalService) throw new Error("Employee Tool Approval Service 未启动");
+    return this.toolApprovalService.reject(requestId, options);
   }
 
   async evaluateEmployee(employeeId) {

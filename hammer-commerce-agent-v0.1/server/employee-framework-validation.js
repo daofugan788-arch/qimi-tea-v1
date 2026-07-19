@@ -1,4 +1,4 @@
-import { BaseEmployee, createHammerOS, definePlugin } from "../hammer-os/index.js";
+import { BaseEmployee, createHammerOS, definePlugin, TOOL_RISK, TOOL_TYPE } from "../hammer-os/index.js";
 
 class FinanceEmployee extends BaseEmployee {
   static employeeType = "finance";
@@ -19,22 +19,36 @@ class FinanceEmployee extends BaseEmployee {
 
 class ResearchEmployee extends BaseEmployee {
   static employeeType = "research";
+  static allowedTools = ["validation.public-data"];
 
   async execute(mission) {
     this.reportProgress(30, "research-ready");
+    const publicData = await this.useTool("validation.public-data", { subject: mission.goal });
     const review = await this.request(mission.input.financeId, "REVIEW_REQUEST", { amount: mission.input.amount });
     await this.context.knowledge.write("experience", "framework-validation", {
       research: this.id,
       finance: mission.input.financeId,
       communication: "MESSAGE_ONLY",
     }, { author: this.id });
-    return review.payload;
+    return { ...review.payload, publicData };
   }
 }
 
 const teamPlugin = definePlugin({
   manifest: { id: "employee-framework-validation", version: "1.0.0" },
   employees: [ResearchEmployee, FinanceEmployee],
+  tools: [{
+    name: "validation.public-data",
+    type: TOOL_TYPE.SEARCH,
+    riskLevel: TOOL_RISK.LOW,
+    async execute(input, context) {
+      return {
+        subject: input.subject,
+        executedBy: context.employeeId,
+        missionId: context.missionId,
+      };
+    },
+  }],
 });
 const hammer = createHammerOS({ plugins: [teamPlugin] });
 const finance = await hammer.supervisor.hireByType("finance", { id: "finance-validation" });
@@ -52,6 +66,7 @@ const output = {
   installedEmployeePlugin: hammer.pluginManager.get("employee-framework-validation").manifest.id,
   employees: hammer.supervisor.list(),
   collaboration: completed.result,
+  toolGateway: completed.result.publicData,
   sharedKnowledge: await hammer.knowledgeCenter.read("experience", "framework-validation"),
   watchdog: {
     totalEmployees: workforce.totalEmployees,
