@@ -95,6 +95,16 @@ test("Android 首页可以输入一句任务、查看执行过程并获得结果
   assert.equal(document.querySelector(".history-panel"), null);
   assert.match(document.querySelector(".result-view").textContent, /任务完成/);
 
+  await act(async () => { document.querySelector(".history-open-button").click(); });
+  await act(async () => {
+    document.querySelector(".history-rerun-button").click();
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+  });
+  assert.equal(document.querySelector(".history-panel"), null);
+  assert.equal(JSON.parse(localStorage.getItem("hammer-os-android-mission-history")).length, 2);
+  assert.match(document.querySelector(".history-open-button").textContent, /2/);
+  assert.match(document.querySelector(".result-view").textContent, /任务完成/);
+
   await act(async () => { root.unmount(); });
   window.close();
 });
