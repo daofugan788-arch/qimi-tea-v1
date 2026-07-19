@@ -3,6 +3,16 @@ import { Share } from "@capacitor/share";
 import { executeMobileMission, loadLastMobileReport, loadMobileHistory, MISSION_STEPS } from "./mobile-mission.js";
 
 const DEFAULT_GOAL = "帮我找今天值得卖的商品";
+const FAVORITES_KEY = "hammer-os-android-product-favorites";
+
+function loadFavorites() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(FAVORITES_KEY) || "[]");
+    return Array.isArray(saved) ? saved : [];
+  } catch {
+    return [];
+  }
+}
 
 function formatTime(value) {
   if (!value) return "";
@@ -82,7 +92,7 @@ function MissionView({ goal, events, running }) {
   );
 }
 
-function ResultView({ report }) {
+function ResultView({ report, favorites, onToggleFavorite }) {
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
   if (!report) return null;
@@ -133,7 +143,12 @@ function ResultView({ report }) {
               <span><small>预计利润</small><b>{money(product.estimatedProfit, product.currency)}</b></span>
             </div>
             <p className="reason">{product.reason}</p>
-            <a href={product.sourceUrl} target="_blank" rel="noreferrer">查看公开商品来源 ↗</a>
+            <div className="product-actions">
+              <a href={product.sourceUrl} target="_blank" rel="noreferrer">查看公开来源 ↗</a>
+              <button className={`favorite-button ${favorites.some((item) => item.id === product.id) ? "saved" : ""}`} type="button" onClick={() => onToggleFavorite(product)}>
+                {favorites.some((item) => item.id === product.id) ? "★ 已收藏" : "☆ 收藏"}
+              </button>
+            </div>
           </article>
         ))}
       </div>
@@ -182,6 +197,7 @@ export default function App() {
   const [events, setEvents] = useState(restored ? MISSION_STEPS.map((step) => ({ stepId: step.id, detail: "已完成" })) : []);
   const [report, setReport] = useState(restored);
   const [history, setHistory] = useState(() => loadMobileHistory());
+  const [favorites, setFavorites] = useState(() => loadFavorites());
   const [historyOpen, setHistoryOpen] = useState(false);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState("");
@@ -223,6 +239,17 @@ export default function App() {
     void startMission(item.goal);
   }
 
+  function toggleFavorite(product) {
+    setFavorites((current) => {
+      const exists = current.some((item) => item.id === product.id);
+      const next = exists
+        ? current.filter((item) => item.id !== product.id)
+        : [{ ...product, missionGoal: activeGoal, savedAt: new Date().toISOString() }, ...current].slice(0, 50);
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify(next));
+      return next;
+    });
+  }
+
   return (
     <main className="android-app">
       <header className="app-header">
@@ -255,7 +282,7 @@ export default function App() {
 
       {error && <section className="error-card"><b>执行未完成</b><p>{error}</p><button type="button" onClick={() => startMission()}>重新执行</button></section>}
       <MissionView goal={activeGoal} events={events} running={running} />
-      <ResultView report={report} />
+      <ResultView report={report} favorites={favorites} onToggleFavorite={toggleFavorite} />
       {report && <button className="again-button" type="button" onClick={() => { setEvents([]); setReport(null); setActiveGoal(""); window.scrollTo({ top: 0, behavior: "smooth" }); }}>＋ 输入新任务</button>}
       <footer>上次完成：{report ? formatTime(report.completedAt) : "暂无"} · 结果保存在当前手机</footer>
       {historyOpen && <HistoryView history={history} onSelect={openHistoryReport} onRun={rerunHistoryMission} onClose={() => setHistoryOpen(false)} />}
