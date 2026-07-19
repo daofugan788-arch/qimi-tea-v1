@@ -1,0 +1,13 @@
+export const TOOL_TYPE = Object.freeze({
+  BROWSER: "BROWSER",
+  OCR: "OCR",
+  SEARCH: "SEARCH",
+  EXCEL: "EXCEL",
+  FILESYSTEM: "FILESYSTEM",
+  DATABASE: "DATABASE",
+  NOTIFICATION: "NOTIFICATION",
+  LLM: "LLM",
+  PLUGIN: "PLUGIN",
+});
+
+export const TOOL_RISK = Object.freeze({ LOW: "LOW", MEDIUM: "MEDIUM", HIGH: "HIGH" });

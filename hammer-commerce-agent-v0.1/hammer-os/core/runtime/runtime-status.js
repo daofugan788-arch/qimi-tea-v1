@@ -1,0 +1,26 @@
+export const MISSION_STATUS = Object.freeze({
+  WAITING: "WAITING",
+  RUNNING: "RUNNING",
+  SUCCESS: "SUCCESS",
+  FAILED: "FAILED",
+  CANCELLED: "CANCELLED",
+});
+
+export const TASK_STATUS = Object.freeze({
+  WAITING: "WAITING",
+  QUEUED: "QUEUED",
+  SCHEDULED: "SCHEDULED",
+  RUNNING: "RUNNING",
+  RETRY: "RETRY",
+  SUCCESS: "SUCCESS",
+  FAILED: "FAILED",
+  SKIPPED: "SKIPPED",
+  CANCELLED: "CANCELLED",
+});
+
+export const WORKER_STATUS = Object.freeze({
+  IDLE: "IDLE",
+  RUNNING: "RUNNING",
+  SUCCESS: "SUCCESS",
+  FAILED: "FAILED",
+});

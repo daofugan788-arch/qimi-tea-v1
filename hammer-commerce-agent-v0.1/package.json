@@ -1,13 +1,14 @@
 {
-  "name": "hammer-commerce-agent",
+  "name": "hammer-os",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.0-architecture-freeze.1",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
     "test": "node --import tsx --test",
+    "test:architecture": "node --import tsx --test tests/hammer-os.test.js",
     "browser:serve": "node server/browser-agent-server.js"
   },
   "dependencies": {

@@ -1,8 +1,23 @@
-# Hammer Commerce Agent V1.0
+# Hammer OS
 
-**Autonomous Commerce Agent（自主商业 Agent）**。
+**Agent Operating System · Architecture Freeze No.001**
 
-目标是让用户尽量只说一句目标，由 Agent 连续完成商业任务，只在登录、发布、下单、支付等必要的安全与合规节点请求确认。
+Hammer 不再是 Commerce App。系统内核固定为 Orchestrator、Runtime、Agent、Tool、Plugin 五层，Commerce 是第一个 Plugin。
+
+本阶段冻结所有新页面、新业务功能、新评分模型、新选品策略和新发布流程。完整架构图、目录、事件流与边界规则见 [`hammer-os/ARCHITECTURE.md`](hammer-os/ARCHITECTURE.md)。
+
+## Architecture Freeze No.001 已交付
+
+- Orchestrator：Mission 创建、Planner 调度、优先级与生命周期入口
+- Runtime：Mission、Task、Worker、Retry、Schedule、Queue、Checkpoint、Cancel
+- EventBus：Agent 禁止互相调用，事件统一送达 Decision、Memory、Logger 和 Mission 投影
+- Memory Service：Agent 与 Runtime Checkpoint 使用统一读写服务
+- Decision Service：通用 Policy 内核，不包含 Commerce 判断
+- BaseAgent：统一生命周期、Event、Memory、Decision 和 Tool Registry 接口
+- Tool Registry：统一 Browser、OCR、Search、Excel、Filesystem、Database、Notification、LLM 类型
+- Plugin Manager：统一注册 Agent、Tool、Planner、Decision Policy 和 Event Subscription
+- Commerce Plugin：现有 Commerce 通过唯一兼容桥接入，不再作为系统本身
+- Architecture Test：验证新增 `FinanceAgent extends BaseAgent` 无需修改 Runtime
 
 ## 最高开发原则
 
