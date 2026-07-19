@@ -78,6 +78,13 @@ test("Android 首页可以输入一句任务、查看执行过程并获得结果
   await act(async () => { document.querySelector(".favorite-button").click(); });
   assert.match(document.querySelector(".favorite-button").textContent, /已收藏/);
   assert.equal(JSON.parse(localStorage.getItem("hammer-os-android-product-favorites")).length, 1);
+  assert.match(document.querySelector(".favorites-open-button").textContent, /1/);
+  await act(async () => { document.querySelector(".favorites-open-button").click(); });
+  assert.match(document.querySelector(".favorites-panel").textContent, /商品收藏/);
+  assert.match(document.querySelector(".favorite-row").textContent, /便携商品/);
+  assert.match(document.querySelector(".favorite-row").textContent, /预计利润/);
+  await act(async () => { document.querySelector(".favorites-panel header button").click(); });
+  assert.equal(document.querySelector(".favorites-panel"), null);
 
   await act(async () => { document.querySelector(".copy-report-button").click(); });
   assert.match(document.querySelector(".copy-report-button").textContent, /已复制/);
