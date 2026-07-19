@@ -13,26 +13,34 @@ export class OpportunityReportTool {
     const recommended = evaluated
       .filter((item) => item.decision === "TEST")
       .sort((a, b) => b.score - a.score || b.profit - a.profit)
-      .slice(0, Number(input.desiredCount) || 3);
+      .slice(0, Number(input.reportLimit) || 3);
     const filtered = evaluated.filter((item) => item.decision !== "REJECT");
     const first = recommended[0] || null;
     const decisionPriority = { TEST: 3, WATCH: 2, REJECT: 1 };
     const productList = [...evaluated]
       .sort((a, b) => decisionPriority[b.decision] - decisionPriority[a.decision] || b.score - a.score || b.profit - a.profit)
       .slice(0, 12);
+    const top3 = productList.filter((item) => item.decision !== "REJECT").slice(0, Number(input.reportLimit) || 3);
     const generatedAt = new Date().toISOString();
-    const scheduled = input.missionSource === "daily-08:00";
+    const scheduled = ["daily-08:00", "evening-20:00", "github-actions"].includes(input.missionSource);
+    const date = input.dailyDate || generatedAt.slice(0, 10);
+    const todayStrategy = first
+      ? `优先核对 ${first.name} 的库存、最终运费与供货稳定性；只做1件小规模测试，并在成交后回填订单数和实际利润。`
+      : "今日没有达到 TEST 门槛的商品；保留证据，明日更换关键词继续搜索，不为低证据商品投入资金。";
     return {
       kind: "COMMERCE_EMPLOYEE_DAILY_REPORT",
-      title: "今日机会商品日报",
+      title: "今日商业机会报告",
       missionId: input.missionId || null,
       goal: input.goal || "寻找今日机会商品",
-      date: generatedAt.slice(0, 10),
+      date,
       generatedAt,
       scannedCount: Number(input.scannedCount) || 0,
       filteredCount: filtered.length,
+      browserVerifiedCount: Number(input.browserVerifiedCount) || evaluated.filter((item) => item.browser_verified).length,
       recommendedCount: recommended.length,
       recommendations: recommended,
+      opportunityCount: filtered.length,
+      top3,
       productList,
       publishingMaterials: input.materials || [],
       firstRecommendation: first,
@@ -42,6 +50,7 @@ export class OpportunityReportTool {
       nextAction: first
         ? "复制第一推荐的商品资料，核对真实采购价、运费和库存后，进行1件小规模测试。"
         : "调整成本或利润条件后继续搜索；不要为未达门槛商品生成发布计划。",
+      todayStrategy,
       evidenceRunId: input.evidenceRunId || null,
       evidenceFile: input.evidenceFile || null,
       operationReduction: scheduled

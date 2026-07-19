@@ -1,7 +1,7 @@
 import { createCommerceEmployee, dispatchCommerceMission } from "./commerce-employee-factory.js";
 
 const args = process.argv.slice(2);
-const daemonMode = !args.includes("--once") && !args.includes("--ask") && !args.includes("--health") && !args.includes("--record-outcome");
+const daemonMode = !args.includes("--once") && !args.includes("--ask") && !args.includes("--health") && !args.includes("--record-outcome") && !args.includes("--feedback");
 const { hammer, memoryFile } = createCommerceEmployee({ dailyEnabled: daemonMode });
 
 hammer.eventBus.subscribe("commerce.daily.report.generated", (event) => {
@@ -23,14 +23,27 @@ async function health() {
 
 async function recordOutcome() {
   const index = args.indexOf("--record-outcome");
-  const [productName, outcome, rawProfit] = args.slice(index + 1, index + 4);
+  const [productName, outcome, rawProfit, rawOrders] = args.slice(index + 1, index + 5);
   if (!productName || !outcome) throw new Error("用法：--record-outcome 商品名 SOLD|NO_SALE|RETURNED|LOSS [利润]");
   await hammer.eventBus.publish("commerce.outcome.recorded", {
     productName,
     outcome,
     profit: Number(rawProfit || 0),
+    orders: Number(rawOrders || 0),
   }, { source: "owner.feedback" });
   process.stdout.write(`已写入学习记忆：${productName} / ${outcome} / ${Number(rawProfit || 0)}\n`);
+}
+
+async function feedback() {
+  const index = args.indexOf("--feedback");
+  const [productName, rawOrders, rawProfit] = args.slice(index + 1, index + 4);
+  if (!productName) throw new Error("用法：--feedback 商品名 成交单数 实际利润");
+  await hammer.eventBus.publish("commerce.outcome.recorded", {
+    productName,
+    orders: Number(rawOrders || 0),
+    profit: Number(rawProfit || 0),
+  }, { source: "owner.feedback" });
+  process.stdout.write(`经验已更新：${productName} / 成交${Number(rawOrders || 0)}单 / 利润${Number(rawProfit || 0)}\n`);
 }
 
 try {
@@ -38,6 +51,7 @@ try {
   else if (args.includes("--ask")) await run(args[args.indexOf("--ask") + 1]);
   else if (args.includes("--health")) await health();
   else if (args.includes("--record-outcome")) await recordOutcome();
+  else if (args.includes("--feedback")) await feedback();
   else process.stdout.write(`Hammer Commerce Employee 已启动：每日 08:00 自主执行，数据 ${memoryFile}\n`);
 } catch (error) {
   process.stderr.write(`${error?.stack || error}\n`);

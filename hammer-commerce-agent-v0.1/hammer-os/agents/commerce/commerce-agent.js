@@ -12,6 +12,7 @@ export class CommerceAgent extends BaseAgent {
     if (action === "collect") return this.collect(task);
     if (action === "decide") return this.evaluate(task);
     if (action === "report") return this.report(task);
+    if (action === "evening-report") return this.eveningReport(task);
     throw new Error(`Commerce Employee 不支持动作：${action || "未指定"}`);
   }
 
@@ -28,6 +29,7 @@ export class CommerceAgent extends BaseAgent {
       shippingCost: task.mission?.input?.shippingCost,
       platformRate: task.mission?.input?.platformRate,
       otherCost: task.mission?.input?.otherCost,
+      dailyDate: task.mission?.input?.dailyDate,
     });
     await this.emit("commerce.opportunities.collected", { count: result.opportunities.length, runId: result.runId });
     return result;
@@ -72,12 +74,39 @@ export class CommerceAgent extends BaseAgent {
       evaluated: evaluation.evaluated,
       evidenceRunId: evaluation.runId,
       evidenceFile: evaluation.evidenceFile,
+      browserVerifiedCount: evaluation.browserVerifiedCount,
       materials: evaluation.materials || [],
       missionSource: task.mission?.metadata?.source || "owner-command",
+      dailyDate: task.mission?.input?.dailyDate,
+      reportLimit: task.mission?.input?.reportLimit || 3,
     });
     await this.memoryService.write("commerce.daily-reports", report.date, report);
     await this.memoryService.write("commerce.employee", "latest-report", report);
     await this.emit("commerce.daily.report.generated", { report });
+    return report;
+  }
+
+  async eveningReport(task) {
+    const dailyDate = task.mission?.input?.dailyDate || new Date().toISOString().slice(0, 10);
+    const opportunities = (await this.memoryService.list("commerce.opportunities"))
+      .map((entry) => entry.value)
+      .filter((item) => (item.daily_date || String(item.timestamp || "").slice(0, 10)) === dailyDate);
+    const morningReport = await this.memoryService.read("commerce.daily-reports", dailyDate);
+    const report = await this.useTool("commerce.daily.report", {
+      missionId: this.missionId,
+      goal: task.mission?.goal,
+      dailyDate,
+      reportLimit: task.mission?.input?.reportLimit || 3,
+      scannedCount: morningReport?.scannedCount || opportunities.length,
+      evaluated: opportunities,
+      evidenceRunId: morningReport?.evidenceRunId || null,
+      evidenceFile: morningReport?.evidenceFile || null,
+      materials: morningReport?.publishingMaterials || [],
+      missionSource: "evening-20:00",
+    });
+    await this.memoryService.write("commerce.daily-reports", dailyDate, report);
+    await this.memoryService.write("commerce.employee", "latest-report", report);
+    await this.emit("commerce.evening.report.generated", { report });
     return report;
   }
 }

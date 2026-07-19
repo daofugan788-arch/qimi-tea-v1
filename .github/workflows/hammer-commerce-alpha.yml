@@ -1,0 +1,132 @@
+name: Hammer Commerce Employee Alpha
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "hammer-commerce-agent-v0.1/**"
+      - ".github/workflows/hammer-commerce-alpha.yml"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "运行模式"
+        required: true
+        default: "full"
+        type: choice
+        options: [full, heartbeat, morning, evening, export]
+  schedule:
+    - cron: "37 * * * *"
+    - cron: "5 0 * * *"
+    - cron: "5 12 * * *"
+
+permissions:
+  contents: read
+  actions: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: hammer-commerce-alpha
+  cancel-in-progress: false
+
+jobs:
+  employee:
+    name: Commerce Employee 工作班次
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: hammer-commerce-agent-v0.1
+    steps:
+      - name: 读取代码
+        uses: actions/checkout@v4
+
+      - name: 准备 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: hammer-commerce-agent-v0.1/package-lock.json
+
+      - name: 恢复员工记忆与浏览器
+        uses: actions/cache@v4
+        with:
+          path: |
+            hammer-commerce-agent-v0.1/runtime-data
+            ~/.cache/ms-playwright
+          key: hammer-commerce-alpha-${{ runner.os }}-${{ hashFiles('hammer-commerce-agent-v0.1/package-lock.json') }}-${{ github.run_id }}
+          restore-keys: |
+            hammer-commerce-alpha-${{ runner.os }}-${{ hashFiles('hammer-commerce-agent-v0.1/package-lock.json') }}-
+
+      - name: 判断本次班次
+        id: mode
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            MODE="full"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            MODE="${{ inputs.mode }}"
+          elif [ "${{ github.event.schedule }}" = "5 0 * * *" ]; then
+            MODE="morning"
+          elif [ "${{ github.event.schedule }}" = "5 12 * * *" ]; then
+            MODE="evening"
+          else
+            MODE="heartbeat"
+          fi
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 准备真实浏览器
+        if: steps.mode.outputs.mode == 'full' || steps.mode.outputs.mode == 'morning'
+        run: npx playwright install --with-deps chromium
+
+      - name: 执行数字员工班次
+        env:
+          HAMMER_DATA_DIR: runtime-data
+          HAMMER_PUBLIC_DIR: alpha-public
+          COMMERCE_DAILY_TIMEZONE: Asia/Shanghai
+          COMMERCE_DAILY_HOUR: "8"
+          COMMERCE_EVENING_HOUR: "20"
+          COMMERCE_SCAN_LIMIT: "60"
+          COMMERCE_MAX_SOURCE_PRICE: "100"
+          COMMERCE_MIN_PROFIT: "20"
+        run: node server/commerce-alpha-cron.js --mode "${{ steps.mode.outputs.mode }}"
+
+      - name: 保存运行痕迹
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hammer-commerce-alpha-${{ github.run_number }}
+          path: |
+            hammer-commerce-agent-v0.1/runtime-data
+            hammer-commerce-agent-v0.1/alpha-public
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: 准备公网状态页
+        if: success()
+        continue-on-error: true
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: 上传公网状态页
+        if: success()
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: hammer-commerce-agent-v0.1/alpha-public
+
+  deploy-status:
+    name: 发布 Alpha 公网状态
+    needs: employee
+    if: needs.employee.result == 'success'
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: 发布到 GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

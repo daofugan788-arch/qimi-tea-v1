@@ -72,6 +72,22 @@ const server = http.createServer(async (request, response) => {
       return json(response, 422, { error: error?.message || "Mission 执行失败" });
     }
   }
+  if (request.method === "POST" && url.pathname === "/api/feedback") {
+    try {
+      const input = await body(request);
+      if (!String(input.productName || "").trim()) throw new Error("商品名称不能为空");
+      await hammer.eventBus.publish("commerce.outcome.recorded", {
+        productName: String(input.productName).trim(),
+        orders: Number(input.orders || 0),
+        profit: Number(input.profit || 0),
+        outcome: input.outcome || undefined,
+        note: String(input.note || ""),
+      }, { source: "mobile-web.feedback" });
+      return json(response, 201, { ok: true });
+    } catch (error) {
+      return json(response, 422, { error: error?.message || "反馈写入失败" });
+    }
+  }
   return json(response, 404, { error: "Not found" });
 });
 

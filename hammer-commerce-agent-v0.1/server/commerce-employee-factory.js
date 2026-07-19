@@ -1,8 +1,10 @@
 import path from "node:path";
 import { createHammerOS, JsonFileMemoryAdapter } from "../hammer-os/index.js";
 import { createCommercePlugin } from "../hammer-os/plugins/commerce/commerce-plugin.js";
+import { createBrowserPlugin } from "../hammer-os/plugins/browser/browser-plugin.js";
 import { OpenAICompatibleContentClient } from "../hammer-os/plugins/commerce/openai-compatible-content-client.js";
 import { ShopifyPublicCatalogProvider } from "../hammer-os/plugins/commerce/shopify-public-catalog-provider.js";
+import { PublicProductPageVerifier } from "./public-product-page-verifier.js";
 
 const DEFAULT_SOURCES = [
   { name: "Kikkerland 公开商品目录", baseUrl: "https://www.kikkerland.com", currency: "USD" },
@@ -22,7 +24,10 @@ export function defaultMissionInput(env = process.env, { useFixedConstraints = f
     shippingCost: Number(env.COMMERCE_SHIPPING_COST || 5),
     platformRate: Number(env.COMMERCE_PLATFORM_RATE || 0.05),
     otherCost: Number(env.COMMERCE_OTHER_COST || 0),
-    desiredCount: 3,
+    desiredCount: 10,
+    contentCount: 3,
+    reportLimit: 3,
+    browserVerifyLimit: 12,
     channel: env.COMMERCE_SALES_CHANNEL || "个人二手/社交销售平台",
   };
   if (useFixedConstraints) {
@@ -38,7 +43,12 @@ export function defaultMissionInput(env = process.env, { useFixedConstraints = f
 export function createCommerceEmployee({ env = process.env, dailyEnabled = false, memoryFile = null } = {}) {
   const dataDirectory = path.resolve(env.HAMMER_DATA_DIR || "data");
   const resolvedMemoryFile = path.resolve(memoryFile || path.join(dataDirectory, "hammer-memory.json"));
-  const searchProviders = sourceConfigs(env).map((source) => new ShopifyPublicCatalogProvider(source));
+  const sources = sourceConfigs(env);
+  const searchProviders = sources.map((source) => new ShopifyPublicCatalogProvider(source));
+  const verifier = new PublicProductPageVerifier({
+    allowedOrigins: sources.map((source) => source.baseUrl),
+    evidenceDirectory: path.join(dataDirectory, "browser-evidence"),
+  });
   const contentClient = new OpenAICompatibleContentClient({
     baseUrl: env.BASE_URL || "",
     apiKey: env.API_KEY || "",
@@ -47,24 +57,27 @@ export function createCommerceEmployee({ env = process.env, dailyEnabled = false
   const fixed = defaultMissionInput(env, { useFixedConstraints: true });
   const commercePlugin = createCommercePlugin({
     searchProviders,
+    browserVerification: true,
     contentClient: contentClient.enabled ? contentClient : null,
     dailyMission: {
       enabled: dailyEnabled,
       timeZone: env.COMMERCE_DAILY_TIMEZONE || "Asia/Shanghai",
       hour: Number(env.COMMERCE_DAILY_HOUR || 8),
       minute: Number(env.COMMERCE_DAILY_MINUTE || 0),
-      goal: env.COMMERCE_DAILY_GOAL || "找到今天最值得测试的3个商品",
+      goal: env.COMMERCE_DAILY_GOAL || "今日寻找10个值得测试商品",
       searchGoal: env.COMMERCE_SEARCH_GOAL || "寻找价格100以内、预计利润20以上的热门小商品",
       constraints: fixed.constraints,
       shippingCost: fixed.shippingCost,
       platformRate: fixed.platformRate,
       otherCost: fixed.otherCost,
+      eveningHour: Number(env.COMMERCE_EVENING_HOUR || 20),
+      eveningMinute: Number(env.COMMERCE_EVENING_MINUTE || 0),
       keepAlive: true,
     },
   });
   const hammer = createHammerOS({
     memoryAdapter: new JsonFileMemoryAdapter(resolvedMemoryFile),
-    plugins: [commercePlugin],
+    plugins: [createBrowserPlugin({ verifier }), commercePlugin],
   });
   return { hammer, memoryFile: resolvedMemoryFile };
 }

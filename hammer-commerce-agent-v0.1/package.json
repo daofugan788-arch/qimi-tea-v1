@@ -1,7 +1,7 @@
 {
   "name": "hammer-os",
   "private": true,
-  "version": "0.7.0",
+  "version": "0.8.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
@@ -15,7 +15,11 @@
     "employee:serve": "node server/commerce-mvp-server.js",
     "employee:once": "node server/commerce-employee-worker.js --once",
     "employee:ask": "node server/commerce-employee-worker.js --ask",
-    "employee:health": "node server/commerce-employee-worker.js --health"
+    "employee:health": "node server/commerce-employee-worker.js --health",
+    "employee:alpha": "node server/commerce-alpha-cron.js --mode full",
+    "employee:heartbeat": "node server/commerce-alpha-cron.js --mode heartbeat",
+    "employee:morning": "node server/commerce-alpha-cron.js --mode morning",
+    "employee:evening": "node server/commerce-alpha-cron.js --mode evening"
   },
   "dependencies": {
     "@sparticuz/chromium": "149.0.0",

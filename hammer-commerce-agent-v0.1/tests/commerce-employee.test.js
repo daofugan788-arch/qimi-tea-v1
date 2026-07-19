@@ -6,6 +6,8 @@ import path from "node:path";
 import { createHammerOS, JsonFileMemoryAdapter } from "../hammer-os/index.js";
 import { createCommercePlugin } from "../hammer-os/plugins/commerce/commerce-plugin.js";
 import { DailyMissionService } from "../hammer-os/plugins/commerce/daily-mission-service.js";
+import { EveningReportService } from "../hammer-os/plugins/commerce/evening-report-service.js";
+import { createBrowserPlugin } from "../hammer-os/plugins/browser/browser-plugin.js";
 import { dispatchCommerceMission } from "../server/commerce-employee-factory.js";
 
 function product(index, overrides = {}) {
@@ -89,18 +91,67 @@ test("Learning Loop 将成交结果写入长期记忆并提高同类机会权重
     review_signal: "未公开",
     rating_signal: "4.5",
   };
+  await hammer.memoryService.write("commerce.opportunities", "phone-stand", {
+    id: "phone-stand",
+    name: "手机支架",
+    product_type: "Phone stand",
+    history_results: [],
+    experience: {},
+  });
   const before = await hammer.decisionService.evaluate("commerce.opportunity.evaluate", { opportunity, outcomes: [] });
   await hammer.eventBus.publish("commerce.outcome.recorded", {
     productName: "手机支架",
-    outcome: "SOLD",
-    profit: 22,
+    orders: 3,
+    profit: 60,
   }, { source: "test.owner" });
   const outcomes = (await hammer.memoryService.list("commerce.outcomes")).map((entry) => entry.value);
   const after = await hammer.decisionService.evaluate("commerce.opportunity.evaluate", { opportunity, outcomes });
 
   assert.equal(outcomes.length, 1);
   assert.equal(after.learning.successes, 1);
-  assert.equal(after.score, before.score + 5);
+  assert.equal(after.learning.orders, 3);
+  assert.equal(after.score, before.score + 11);
+  const learned = await hammer.memoryService.read("commerce.opportunities", "phone-stand");
+  assert.equal(learned.history_results.length, 1);
+  assert.equal(learned.experience.totalOrders, 3);
+  assert.equal(learned.experience.totalProfit, 60);
+});
+
+test("Browser Plugin 真实执行位置位于搜索和机会入库之间", async () => {
+  const provider = fakeSearchProvider();
+  const verifier = {
+    async verify({ runId, items }) {
+      return {
+        runId: `VERIFY-${runId}`,
+        verifiedCount: items.length,
+        evidenceFile: "/evidence/verify.json",
+        errors: [],
+        items: items.map((item, index) => ({
+          ...item,
+          browserVerified: true,
+          browserVerifiedAt: "2026-07-19T00:01:00.000Z",
+          screenshotUrl: `/evidence/verified-${index}.png`,
+        })),
+      };
+    },
+  };
+  const hammer = createHammerOS({
+    plugins: [
+      createBrowserPlugin({ verifier }),
+      createCommercePlugin({ searchProviders: [provider], browserVerification: true }),
+    ],
+  });
+  const mission = await hammer.orchestrator.dispatch({
+    type: "commerce.daily",
+    goal: "今日寻找10个值得测试商品",
+    input: { desiredCount: 10, contentCount: 3, reportLimit: 3, browserVerifyLimit: 12 },
+  });
+
+  assert.equal(mission.status, "SUCCESS");
+  assert.deepEqual(mission.tasks.map((task) => task.agentType), ["commerce-product-search", "browser", "commerce", "commerce", "commerce-content", "commerce"]);
+  assert.equal(mission.tasks[1].output.browserVerifiedCount, 4);
+  assert.equal(mission.tasks[5].output.browserVerifiedCount, 4);
+  assert.equal((await hammer.memoryService.read("commerce.opportunities", mission.tasks[3].output.evaluated[0].id)).browser_verified, true);
 });
 
 test("Daily Mission 08:00 自动执行、同一天幂等并跨24小时产生新成果", async () => {
@@ -129,6 +180,32 @@ test("Daily Mission 08:00 自动执行、同一天幂等并跨24小时产生新�
   assert.equal((await hammer.memoryService.read("commerce.daily-schedule", "2026-07-19")).status, "SUCCESS");
   assert.equal((await hammer.memoryService.read("commerce.daily-schedule", "2026-07-20")).status, "SUCCESS");
   assert.equal((await hammer.memoryService.read("commerce.employee", "heartbeat")).status, "ALIVE");
+});
+
+test("20:00 晚班只汇总当天机会并生成 TOP3 商业报告", async () => {
+  const hammer = employeeOS();
+  await hammer.orchestrator.dispatch({
+    type: "commerce.daily",
+    goal: "今日寻找10个值得测试商品",
+    input: { dailyDate: "2026-07-19", desiredCount: 10, contentCount: 3, reportLimit: 3 },
+    metadata: { source: "daily-08:00" },
+  });
+  const evening = new EveningReportService({
+    orchestrator: hammer.orchestrator,
+    memoryService: hammer.memoryService,
+    eventBus: hammer.eventBus,
+    now: () => new Date("2026-07-19T12:01:00.000Z"),
+    timeZone: "Asia/Shanghai",
+    keepAlive: false,
+  });
+  const mission = await evening.tick();
+  const duplicate = await evening.tick();
+
+  assert.equal(mission.status, "SUCCESS");
+  assert.equal(mission.tasks[0].output.title, "今日商业机会报告");
+  assert.equal(mission.tasks[0].output.date, "2026-07-19");
+  assert.equal(mission.tasks[0].output.top3.length, 3);
+  assert.equal(duplicate.status, "ALREADY_COMPLETED");
 });
 
 test("JsonFileMemoryAdapter 让机会库和日报跨进程重启保留", async () => {

@@ -4,3 +4,6 @@ dist/
 *.log
 evidence/
 data/
+runtime-data/
+alpha-*-data/
+alpha-public*/
