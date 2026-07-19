@@ -18,6 +18,8 @@ export const MISSION_STEPS = Object.freeze([
 
 const round = (value) => Math.round(Number(value || 0) * 100) / 100;
 const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+const LAST_REPORT_KEY = "hammer-os-android-last-report";
+const HISTORY_KEY = "hammer-os-android-mission-history";
 
 function numberFrom(text, patterns) {
   for (const pattern of patterns) {
@@ -154,15 +156,28 @@ export async function executeMobileMission(goal, onProgress = () => {}) {
   };
 
   await progress("save", "Mission 与商品结果已保存到当前手机");
-  localStorage.setItem("hammer-os-android-last-report", JSON.stringify(report));
+  localStorage.setItem(LAST_REPORT_KEY, JSON.stringify(report));
+  const history = loadMobileHistory().filter((item) => item.missionId !== report.missionId);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify([report, ...history].slice(0, 20)));
   await progress("report", "执行报告已生成");
   return report;
 }
 
 export function loadLastMobileReport() {
   try {
-    return JSON.parse(localStorage.getItem("hammer-os-android-last-report") || "null");
+    return JSON.parse(localStorage.getItem(LAST_REPORT_KEY) || "null");
   } catch {
     return null;
+  }
+}
+
+export function loadMobileHistory() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+    if (Array.isArray(saved) && saved.length) return saved.slice(0, 20);
+    const last = loadLastMobileReport();
+    return last ? [last] : [];
+  } catch {
+    return [];
   }
 }

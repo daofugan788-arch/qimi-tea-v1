@@ -73,6 +73,7 @@ test("Android 首页可以输入一句任务、查看执行过程并获得结果
   assert.match(document.querySelector(".result-view").textContent, /便携商品/);
   assert.match(document.querySelector(".result-view").textContent, /预计利润/);
   assert.ok(JSON.parse(localStorage.getItem("hammer-os-android-last-report")));
+  assert.equal(JSON.parse(localStorage.getItem("hammer-os-android-mission-history")).length, 1);
 
   await act(async () => { document.querySelector(".copy-report-button").click(); });
   assert.match(document.querySelector(".copy-report-button").textContent, /已复制/);
@@ -86,6 +87,13 @@ test("Android 首页可以输入一句任务、查看执行过程并获得结果
   assert.match(document.querySelector(".share-report-button").textContent, /已打开分享/);
   assert.match(sharedReport.text, /Hammer Mission 执行报告/);
   assert.match(sharedReport.text, /预计利润/);
+
+  await act(async () => { document.querySelector(".history-open-button").click(); });
+  assert.match(document.querySelector(".history-panel").textContent, /任务历史/);
+  assert.equal(document.querySelectorAll(".history-item").length, 1);
+  await act(async () => { document.querySelector(".history-item").click(); });
+  assert.equal(document.querySelector(".history-panel"), null);
+  assert.match(document.querySelector(".result-view").textContent, /任务完成/);
 
   await act(async () => { root.unmount(); });
   window.close();
