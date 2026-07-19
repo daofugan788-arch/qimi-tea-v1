@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { Share } from "@capacitor/share";
 import { executeMobileMission, loadLastMobileReport, MISSION_STEPS } from "./mobile-mission.js";
 
 const DEFAULT_GOAL = "帮我找今天值得卖的商品";
@@ -83,11 +84,25 @@ function MissionView({ goal, events, running }) {
 
 function ResultView({ report }) {
   const [copied, setCopied] = useState(false);
+  const [shared, setShared] = useState(false);
   if (!report) return null;
   async function copyReport() {
     await copyText(reportText(report));
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1800);
+  }
+  async function shareReport() {
+    try {
+      await Share.share({
+        title: "Hammer Mission 执行报告",
+        text: reportText(report),
+        dialogTitle: "分享执行报告",
+      });
+      setShared(true);
+      window.setTimeout(() => setShared(false), 1800);
+    } catch {
+      await copyReport();
+    }
   }
   return (
     <section className="result-view">
@@ -124,9 +139,14 @@ function ResultView({ report }) {
       </div>
       {report.sourceErrors?.length > 0 && <p className="source-note">部分来源暂时不可用：{report.sourceErrors.join("；")}</p>}
       <p className="risk-note">{report.notice}</p>
-      <button className="copy-report-button" type="button" onClick={copyReport}>
-        {copied ? "✓ 完整报告已复制" : "复制完整报告"}
-      </button>
+      <div className="result-actions">
+        <button className="copy-report-button" type="button" onClick={copyReport}>
+          {copied ? "✓ 已复制" : "复制报告"}
+        </button>
+        <button className="share-report-button" type="button" onClick={shareReport}>
+          {shared ? "✓ 已打开分享" : "分享报告"}
+        </button>
+      </div>
     </section>
   );
 }
