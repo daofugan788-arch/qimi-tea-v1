@@ -100,12 +100,14 @@ button { -webkit-tap-highlight-color: transparent; }
 .history-panel > header > button { width: 36px; height: 36px; border: 0; border-radius: 50%; background: #e4e7df; color: #555b51; font-size: 22px; }
 .history-list { display: grid; gap: 8px; }
 .history-list > p { padding: 22px; border-radius: 16px; background: #fff; color: #777d72; text-align: center; font-size: 11px; }
-.history-item { display: flex; align-items: center; width: 100%; gap: 11px; padding: 14px; border: 1px solid #e0e3db; border-radius: 15px; background: #fff; color: #181b16; text-align: left; }
+.history-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; padding: 6px; border: 1px solid #e0e3db; border-radius: 16px; background: #fff; }
+.history-item { display: flex; align-items: center; min-width: 0; gap: 11px; padding: 8px; border: 0; border-radius: 11px; background: #fff; color: #181b16; text-align: left; }
 .history-item > span { display: grid; flex: 0 0 27px; place-items: center; width: 27px; height: 27px; border-radius: 50%; background: #dff5a0; color: #466000; font-size: 11px; font-weight: 950; }
 .history-item > div { display: flex; flex: 1; min-width: 0; flex-direction: column; }
 .history-item b { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .history-item small { margin-top: 5px; color: #8a9085; font-size: 9px; }
 .history-item i { color: #92978d; font-size: 20px; font-style: normal; }
+.history-rerun-button { align-self: stretch; padding: 0 11px; border: 0; border-radius: 11px; background: #e5f6b4; color: #425800; font-size: 9px; font-weight: 900; }
 
 @media (min-width: 600px) {
   .android-app { padding-left: 28px; padding-right: 28px; }

@@ -151,7 +151,7 @@ function ResultView({ report }) {
   );
 }
 
-function HistoryView({ history, onSelect, onClose }) {
+function HistoryView({ history, onSelect, onRun, onClose }) {
   return (
     <div className="history-layer" role="dialog" aria-modal="true" aria-label="任务历史">
       <button className="history-backdrop" type="button" onClick={onClose} aria-label="关闭任务历史" />
@@ -160,11 +160,14 @@ function HistoryView({ history, onSelect, onClose }) {
         <div className="history-list">
           {history.length === 0 && <p>还没有完成的任务。</p>}
           {history.map((item) => (
-            <button className="history-item" type="button" key={item.missionId} onClick={() => onSelect(item)}>
-              <span>✓</span>
-              <div><b>{item.goal}</b><small>{formatTime(item.completedAt)} · 扫描 {item.scannedCount} 个 · TEST {item.testCount} 个</small></div>
-              <i>›</i>
-            </button>
+            <article className="history-row" key={item.missionId}>
+              <button className="history-item" type="button" onClick={() => onSelect(item)}>
+                <span>✓</span>
+                <div><b>{item.goal}</b><small>{formatTime(item.completedAt)} · 扫描 {item.scannedCount} 个 · TEST {item.testCount} 个</small></div>
+                <i>›</i>
+              </button>
+              <button className="history-rerun-button" type="button" onClick={() => onRun(item)}>重新执行</button>
+            </article>
           ))}
         </div>
       </section>
@@ -183,8 +186,8 @@ export default function App() {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState("");
 
-  async function startMission() {
-    const value = goal.trim();
+  async function startMission(selectedGoal = null) {
+    const value = String(typeof selectedGoal === "string" ? selectedGoal : goal).trim();
     if (!value || running) return;
     setActiveGoal(value);
     setEvents([]);
@@ -211,6 +214,13 @@ export default function App() {
     setError("");
     setHistoryOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function rerunHistoryMission(item) {
+    setGoal(item.goal);
+    setHistoryOpen(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    void startMission(item.goal);
   }
 
   return (
@@ -243,12 +253,12 @@ export default function App() {
         <div className="safety-line">只读取公开页面 · 不登录 · 不发布 · 不付款</div>
       </section>
 
-      {error && <section className="error-card"><b>执行未完成</b><p>{error}</p><button type="button" onClick={startMission}>重新执行</button></section>}
+      {error && <section className="error-card"><b>执行未完成</b><p>{error}</p><button type="button" onClick={() => startMission()}>重新执行</button></section>}
       <MissionView goal={activeGoal} events={events} running={running} />
       <ResultView report={report} />
       {report && <button className="again-button" type="button" onClick={() => { setEvents([]); setReport(null); setActiveGoal(""); window.scrollTo({ top: 0, behavior: "smooth" }); }}>＋ 输入新任务</button>}
       <footer>上次完成：{report ? formatTime(report.completedAt) : "暂无"} · 结果保存在当前手机</footer>
-      {historyOpen && <HistoryView history={history} onSelect={openHistoryReport} onClose={() => setHistoryOpen(false)} />}
+      {historyOpen && <HistoryView history={history} onSelect={openHistoryReport} onRun={rerunHistoryMission} onClose={() => setHistoryOpen(false)} />}
     </main>
   );
 }
