@@ -83,6 +83,27 @@ export class EmployeeWorkspace {
     await this.writeChain;
   }
 
+  hydrate(snapshot = {}) {
+    if (snapshot.employeeId && snapshot.employeeId !== this.employeeId) throw new Error("EmployeeWorkspace 恢复目标不一致");
+    this.mission = clone(snapshot.mission || null);
+    this.memory = new Map(Object.entries(snapshot.memory || {}).map(([key, value]) => [key, clone(value)]));
+    this.knowledge = new Map(Object.entries(snapshot.knowledge || {}).map(([key, value]) => [key, clone(value)]));
+    this.history = clone(snapshot.history || []);
+    this.queue = clone(snapshot.queue || []);
+    this.decision = clone(snapshot.decision || []);
+    this.record("WORKSPACE_RESTORED", { previousUpdatedAt: snapshot.updatedAt || null });
+    return this;
+  }
+
+  recoverIncompleteMission() {
+    if (!this.mission) return null;
+    const mission = clone(this.mission);
+    if (!this.queue.some((item) => item.id === mission.id)) this.queue.unshift(mission);
+    this.mission = null;
+    this.record("MISSION_RECOVERED_TO_QUEUE", { missionId: mission.id || null });
+    return mission;
+  }
+
   snapshot() {
     return {
       employeeId: this.employeeId,
@@ -106,5 +127,12 @@ export class EmployeeWorkspaceFactory {
 
   create(employeeId, employeeType) {
     return new EmployeeWorkspace({ employeeId, employeeType, memoryService: this.memoryService, now: this.now });
+  }
+
+  async restore(employeeId, employeeType) {
+    const workspace = this.create(employeeId, employeeType);
+    const snapshot = this.memoryService ? await this.memoryService.read("employee.workspaces", employeeId) : null;
+    if (snapshot) workspace.hydrate(snapshot);
+    return workspace;
   }
 }

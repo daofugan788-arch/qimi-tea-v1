@@ -12,11 +12,20 @@ export class EmployeeRuntime {
     this.pending = new Map();
   }
 
-  async attach(employee) {
+  async attach(employee, { snapshot = null } = {}) {
     if (!employee?.id) throw new Error("EmployeeRuntime 只能挂载 BaseEmployee");
     if (this.employees.has(employee.id)) throw new Error(`Employee 已存在：${employee.id}`);
     this.employees.set(employee.id, employee);
-    await employee.initialize();
+    try {
+      if (snapshot) employee.restore(snapshot);
+      await employee.initialize({ restored: Boolean(snapshot) });
+    } catch (error) {
+      this.employees.delete(employee.id);
+      employee.stopHeartbeat?.();
+      employee.unsubscribeMessages?.();
+      employee.unsubscribeMessages = null;
+      throw error;
+    }
     await this.eventBus?.publish("employee.runtime.attached", { employee: employee.status() }, { source: "employee.runtime" });
     return employee.status();
   }

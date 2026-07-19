@@ -1,4 +1,4 @@
-import { BaseEmployee, createHammerOS } from "../hammer-os/index.js";
+import { BaseEmployee, createHammerOS, definePlugin } from "../hammer-os/index.js";
 
 class FinanceEmployee extends BaseEmployee {
   static employeeType = "finance";
@@ -32,16 +32,21 @@ class ResearchEmployee extends BaseEmployee {
   }
 }
 
-const hammer = createHammerOS();
-const finance = await hammer.supervisor.hire(FinanceEmployee, { id: "finance-validation" });
-const research = await hammer.supervisor.hire(ResearchEmployee, { id: "research-validation" });
+const teamPlugin = definePlugin({
+  manifest: { id: "employee-framework-validation", version: "1.0.0" },
+  employees: [ResearchEmployee, FinanceEmployee],
+});
+const hammer = createHammerOS({ plugins: [teamPlugin] });
+const finance = await hammer.supervisor.hireByType("finance", { id: "finance-validation" });
+const research = await hammer.supervisor.hireByType("research", { id: "research-validation" });
 const completed = await hammer.supervisor.assign(research.id, {
   goal: "验证两个 Employee 通过 Message 协作",
   input: { financeId: finance.id, amount: 60 },
 });
 
 const output = {
-  hammerStartedWithoutCommerce: hammer.pluginManager.list().length === 0,
+  hammerStartedWithoutCommerce: !hammer.pluginManager.get("commerce"),
+  installedEmployeePlugin: hammer.pluginManager.get("employee-framework-validation").manifest.id,
   employees: hammer.supervisor.list(),
   collaboration: completed.result,
   sharedKnowledge: await hammer.knowledgeCenter.read("experience", "framework-validation"),

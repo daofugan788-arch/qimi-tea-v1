@@ -28,6 +28,16 @@ export class EmployeeLifecycle {
     return this.snapshot();
   }
 
+  restore(snapshot = {}) {
+    const state = String(snapshot.state || "");
+    if (!Object.hasOwn(EMPLOYEE_STATE, state)) throw new Error(`Employee Lifecycle 无法恢复状态：${state}`);
+    this.state = state;
+    this.history = Array.isArray(snapshot.history) && snapshot.history.length
+      ? snapshot.history.map((item) => ({ ...item }))
+      : [{ from: null, to: state, reason: "employee-restored", timestamp: this.now().toISOString() }];
+    return this.snapshot();
+  }
+
   snapshot() {
     return { state: this.state, history: this.history.map((item) => ({ ...item })) };
   }

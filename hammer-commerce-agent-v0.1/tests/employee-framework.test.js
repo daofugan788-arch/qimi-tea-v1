@@ -1,12 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { mkdtemp, readFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import {
   BaseEmployee,
   createHammerOS,
+  definePlugin,
   EMPLOYEE_STATE,
   EmployeeLifecycle,
+  JsonFileMemoryAdapter,
 } from "../hammer-os/index.js";
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -71,6 +74,25 @@ test("新增 Research 与 Finance Employee 不修改 Core 且可以同时运行"
   assert.equal(hammer.supervisor.employee(finance.id).state, EMPLOYEE_STATE.IDLE);
   await hammer.supervisor.retire(research.id);
   await hammer.supervisor.retire(finance.id);
+});
+
+test("Plugin 可以注册 Employee 类型并由 Supervisor 按类型招聘", async () => {
+  let installedServices = null;
+  const plugin = definePlugin({
+    manifest: { id: "research-employee-plugin", version: "1.0.0", name: "Research Employee Plugin" },
+    employees: [ResearchEmployee],
+    onInstall(services) { installedServices = services; },
+  });
+  const hammer = createHammerOS({ plugins: [plugin] });
+  const hired = await hammer.supervisor.hireByType("research", { id: "research-from-plugin" });
+  const completed = await hammer.supervisor.assign(hired.id, { goal: "插件员工执行任务" });
+
+  assert.equal(completed.result.employee, "research");
+  assert.equal(hammer.pluginManager.get("research-employee-plugin").employees[0], ResearchEmployee);
+  assert.equal(installedServices.supervisor, hammer.supervisor);
+  assert.equal(installedServices.employeeRuntime, hammer.employeeRuntime);
+  assert.equal(installedServices.knowledgeCenter, hammer.knowledgeCenter);
+  await hammer.supervisor.retire(hired.id);
 });
 
 test("Employee Lifecycle 支持暂停、RESUME、恢复与回收并拒绝非法跳转", async () => {
@@ -225,6 +247,90 @@ test("Knowledge Center 让不同 Employee 共享规则且保留作者", async ()
   assert.equal(read.result.author, research.id);
   await hammer.supervisor.retire(research.id);
   await hammer.supervisor.retire(finance.id);
+});
+
+test("Hammer 重启后从 Roster 与 Workspace 恢复员工和未完成 Mission", async () => {
+  class RecoverableEmployee extends BaseEmployee {
+    static employeeType = "recoverable";
+    async execute(mission) {
+      this.context.workspace.remember("recovered-mission", mission.id);
+      return { recovered: mission.id };
+    }
+  }
+  const employeePlugin = () => definePlugin({
+    manifest: { id: "recoverable-employee-plugin", version: "1.0.0" },
+    employees: [RecoverableEmployee],
+  });
+  const directory = await mkdtemp(path.join(os.tmpdir(), "hammer-employee-recovery-"));
+  const memoryFile = path.join(directory, "memory.json");
+  const first = createHammerOS({
+    memoryAdapter: new JsonFileMemoryAdapter(memoryFile),
+    plugins: [employeePlugin()],
+  });
+  const hired = await first.supervisor.hireByType("recoverable", { id: "recoverable-1" });
+  const firstEmployee = first.employeeRuntime.get(hired.id);
+  firstEmployee.context.workspace.remember("private-experience", { score: 88 });
+  const interruptedMission = { id: "mission-before-restart", goal: "重启后继续", input: {}, priority: 0 };
+  firstEmployee.context.workspace.setMission(interruptedMission);
+  firstEmployee.lifecycle.transition(EMPLOYEE_STATE.WORKING, { reason: "simulate-process-crash" });
+  await first.supervisor.persistEmployee(hired.id);
+  await firstEmployee.context.workspace.flush();
+  firstEmployee.stopHeartbeat();
+
+  const second = createHammerOS({
+    memoryAdapter: new JsonFileMemoryAdapter(memoryFile),
+    plugins: [employeePlugin()],
+  });
+  const recovered = await second.supervisor.recover();
+  await wait(20);
+  const restoredEmployee = second.employeeRuntime.get(hired.id);
+
+  assert.equal(recovered[0].status, "RECOVERED");
+  assert.equal(restoredEmployee.context.workspace.recall("private-experience").score, 88);
+  assert.equal(restoredEmployee.context.workspace.recall("recovered-mission"), "mission-before-restart");
+  assert.equal(restoredEmployee.state, EMPLOYEE_STATE.IDLE);
+  assert.ok(restoredEmployee.lifecycle.history.some((entry) => entry.reason === "process-restart-ready"));
+  await second.supervisor.retire(hired.id);
+});
+
+test("恢复时缺少 Employee Plugin 会报告阻塞且不创建幽灵员工", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "hammer-missing-employee-plugin-"));
+  const memoryFile = path.join(directory, "memory.json");
+  const first = createHammerOS({ memoryAdapter: new JsonFileMemoryAdapter(memoryFile) });
+  const hired = await first.supervisor.hire(ResearchEmployee, { id: "research-needs-plugin" });
+  await first.supervisor.persistEmployee(hired.id);
+  first.employeeRuntime.get(hired.id).stopHeartbeat();
+
+  const restarted = createHammerOS({ memoryAdapter: new JsonFileMemoryAdapter(memoryFile) });
+  const recovery = await restarted.supervisor.recover();
+
+  assert.deepEqual(recovery, [{
+    id: hired.id,
+    type: "research",
+    status: "MISSING_EMPLOYEE_PLUGIN",
+  }]);
+  assert.equal(restarted.employeeRuntime.get(hired.id), null);
+});
+
+test("Employee 恢复失败时 Runtime 会回滚挂载", async () => {
+  const hammer = createHammerOS();
+  const snapshot = {
+    lifecycle: {
+      state: EMPLOYEE_STATE.FINISHED,
+      history: [{ from: EMPLOYEE_STATE.IDLE, to: EMPLOYEE_STATE.FINISHED, reason: "already-retired" }],
+    },
+  };
+
+  await assert.rejects(
+    hammer.supervisor.hire(ResearchEmployee, {
+      id: "invalid-restored-employee",
+      restore: true,
+      snapshot,
+    }),
+    /已结束，不能恢复/,
+  );
+  assert.equal(hammer.employeeRuntime.get("invalid-restored-employee"), null);
+  assert.equal(hammer.employeeMessageBus.receivers.has("invalid-restored-employee"), false);
 });
 
 test("Employee Framework 源码不依赖 Commerce、Agent 或业务 Plugin", async () => {

@@ -9,7 +9,7 @@ export function createEmployeeFramework({ eventBus = null, memoryService = null,
   const knowledgeCenter = new KnowledgeCenter({ memoryService, eventBus, now });
   const workspaceFactory = new EmployeeWorkspaceFactory({ memoryService, now });
   const employeeRuntime = new EmployeeRuntime({ eventBus });
-  const supervisor = new Supervisor({ runtime: employeeRuntime, workspaceFactory, messageBus, knowledgeCenter, eventBus });
+  const supervisor = new Supervisor({ runtime: employeeRuntime, workspaceFactory, messageBus, knowledgeCenter, eventBus, memoryService });
   return { employeeRuntime, supervisor, employeeMessageBus: messageBus, knowledgeCenter, employeeWorkspaceFactory: workspaceFactory };
 }
 

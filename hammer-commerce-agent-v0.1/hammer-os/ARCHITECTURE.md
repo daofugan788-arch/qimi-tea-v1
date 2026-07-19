@@ -144,3 +144,32 @@ await hammer.supervisor.assign(research.id, { goal: "研究公开市场" });
 ```
 
 不需要修改 Core、Runtime、Supervisor 或 Message Bus。
+
+## Employee Plugin
+
+通用 Plugin Contract 支持 `employees`：
+
+```js
+definePlugin({
+  manifest: { id: "research", version: "1.0.0" },
+  employees: [ResearchEmployee],
+});
+```
+
+Plugin Manager 只把 Employee 类型注册到 Supervisor，不实例化业务员工。Supervisor 使用 `hireByType("research")` 招聘。
+
+## Process Recovery
+
+```mermaid
+flowchart TD
+  H["Hire / Heartbeat"] --> R["Employee Roster"]
+  W["Workspace 变化"] --> M["Memory Service"]
+  X["进程重启"] --> P["重新安装 Employee Plugin"]
+  P --> S["Supervisor.recover"]
+  S --> R
+  S --> M
+  S --> Q["中断 Mission 回到 Queue"]
+  Q --> E["Employee 继续执行"]
+```
+
+Roster 保存 Employee 类型、Plugin 来源、状态与 Lifecycle 快照；Workspace 保存私人 Memory、Knowledge 引用、History、Queue 和 Decision。已回收员工不会恢复；缺失 Employee Plugin 时返回 `MISSING_EMPLOYEE_PLUGIN`，不会生成错误实例。

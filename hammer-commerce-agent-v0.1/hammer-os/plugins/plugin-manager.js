@@ -1,5 +1,5 @@
 export class PluginManager {
-  constructor({ agentRegistry, toolRegistry, decisionService, plannerRegistry, eventBus, memoryService, orchestrator, runtime, scheduler } = {}) {
+  constructor({ agentRegistry, toolRegistry, decisionService, plannerRegistry, eventBus, memoryService, orchestrator, runtime, scheduler, supervisor = null, employeeRuntime = null, employeeMessageBus = null, knowledgeCenter = null } = {}) {
     this.agentRegistry = agentRegistry;
     this.toolRegistry = toolRegistry;
     this.decisionService = decisionService;
@@ -9,6 +9,10 @@ export class PluginManager {
     this.orchestrator = orchestrator;
     this.runtime = runtime;
     this.scheduler = scheduler;
+    this.supervisor = supervisor;
+    this.employeeRuntime = employeeRuntime;
+    this.employeeMessageBus = employeeMessageBus;
+    this.knowledgeCenter = knowledgeCenter;
     this.plugins = new Map();
     this.unsubscribers = new Map();
   }
@@ -18,6 +22,10 @@ export class PluginManager {
     if (!id) throw new Error("Plugin manifest 无效");
     if (this.plugins.has(id)) throw new Error(`Plugin 已安装：${id}`);
     plugin.agents.forEach((AgentClass) => this.agentRegistry.register(AgentClass, { pluginId: id }));
+    plugin.employees.forEach((EmployeeClass) => {
+      if (!this.supervisor) throw new Error(`Plugin ${id} 包含 Employee，但 Employee Framework 未启动`);
+      this.supervisor.registerEmployeeType(EmployeeClass, { pluginId: id });
+    });
     plugin.tools.forEach((tool) => this.toolRegistry.register(tool, { pluginId: id }));
     plugin.decisions.forEach((policy) => this.decisionService.registerPolicy(policy.id, policy.evaluate, { pluginId: id }));
     Object.entries(plugin.planners).forEach(([missionType, planner]) => this.plannerRegistry.register(missionType, planner, { pluginId: id }));
@@ -36,6 +44,10 @@ export class PluginManager {
       orchestrator: this.orchestrator,
       runtime: this.runtime,
       scheduler: this.scheduler,
+      supervisor: this.supervisor,
+      employeeRuntime: this.employeeRuntime,
+      employeeMessageBus: this.employeeMessageBus,
+      knowledgeCenter: this.knowledgeCenter,
     });
     void this.eventBus.publish("plugin.installed", { plugin: plugin.manifest }, { source: "plugins.manager" });
     return plugin.manifest;

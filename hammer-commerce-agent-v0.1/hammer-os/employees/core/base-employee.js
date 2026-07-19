@@ -39,12 +39,37 @@ export class BaseEmployee {
     return this.lifecycle.state;
   }
 
-  async initialize() {
-    if (this.state !== EMPLOYEE_STATE.CREATED) return this.status();
+  async initialize({ restored = false } = {}) {
     this.unsubscribeMessages = this.context.communication.register(this.id, (message) => this.receiveMessage(message));
-    this.lifecycle.transition(EMPLOYEE_STATE.IDLE, { reason: "employee-initialized" });
+    if (this.state === EMPLOYEE_STATE.CREATED) {
+      this.lifecycle.transition(EMPLOYEE_STATE.IDLE, { reason: "employee-initialized" });
+    } else if (restored) {
+      this.normalizeRestoredState();
+    }
     this.startHeartbeat();
     await this.heartbeat();
+    return this.status();
+  }
+
+  restore(snapshot = {}) {
+    if (snapshot.lifecycle) this.lifecycle.restore(snapshot.lifecycle);
+    this.progress = Math.max(0, Math.min(100, Number(snapshot.progress) || 0));
+    this.waitingFor = snapshot.waiting || null;
+    this.needHelp = Boolean(snapshot.needHelp);
+    this.helpReason = String(snapshot.helpReason || "");
+    this.context.workspace.record("EMPLOYEE_RESTORED", { previousState: this.state, restoredAt: this.now().toISOString() });
+    return this.status();
+  }
+
+  normalizeRestoredState() {
+    if (this.state === EMPLOYEE_STATE.FINISHED) throw new Error(`Employee ${this.id} 已结束，不能恢复`);
+    if (this.state === EMPLOYEE_STATE.WAITING) {
+      this.lifecycle.transition(EMPLOYEE_STATE.WORKING, { reason: "process-restart-recovery" });
+    }
+    if (this.state === EMPLOYEE_STATE.WORKING || this.state === EMPLOYEE_STATE.RESUME) {
+      this.lifecycle.transition(EMPLOYEE_STATE.IDLE, { reason: "process-restart-ready" });
+    }
+    this.waitingFor = null;
     return this.status();
   }
 
@@ -185,6 +210,15 @@ export class BaseEmployee {
       waiting: this.waitingFor,
       needHelp: this.needHelp,
       helpReason: this.helpReason || null,
+    };
+  }
+
+  snapshot() {
+    return {
+      ...this.status(),
+      heartbeatIntervalMs: this.heartbeatIntervalMs,
+      lifecycle: this.lifecycle.snapshot(),
+      savedAt: this.now().toISOString(),
     };
   }
 }

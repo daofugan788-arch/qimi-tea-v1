@@ -5,6 +5,7 @@ export function definePlugin(plugin) {
   return Object.freeze({
     manifest: Object.freeze({ ...plugin.manifest, id, version }),
     agents: Object.freeze([...(plugin.agents || [])]),
+    employees: Object.freeze([...(plugin.employees || [])]),
     tools: Object.freeze([...(plugin.tools || [])]),
     decisions: Object.freeze([...(plugin.decisions || [])]),
     planners: Object.freeze({ ...(plugin.planners || {}) }),

@@ -29,6 +29,7 @@ export function createHammerOS({ plugins = [], memoryAdapter = undefined, now = 
     scheduler,
   });
   const orchestrator = new Orchestrator({ runtime, planner: plannerRegistry, eventBus });
+  const employeeFramework = createEmployeeFramework({ eventBus, memoryService, ...(employeeNow ? { now: employeeNow } : {}) });
   const pluginManager = new PluginManager({
     agentRegistry,
     toolRegistry,
@@ -39,9 +40,12 @@ export function createHammerOS({ plugins = [], memoryAdapter = undefined, now = 
     orchestrator,
     runtime,
     scheduler,
+    supervisor: employeeFramework.supervisor,
+    employeeRuntime: employeeFramework.employeeRuntime,
+    employeeMessageBus: employeeFramework.employeeMessageBus,
+    knowledgeCenter: employeeFramework.knowledgeCenter,
   });
   plugins.forEach((plugin) => pluginManager.install(plugin));
-  const employeeFramework = createEmployeeFramework({ eventBus, memoryService, ...(employeeNow ? { now: employeeNow } : {}) });
   return {
     orchestrator,
     runtime,
