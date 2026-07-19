@@ -5,14 +5,43 @@ import { createRoot } from "react-dom/client";
 import { Window } from "happy-dom";
 import App from "../src/App.jsx";
 
-test("手机首页可以输入商品并获得商业分析报告", async () => {
-  const window = new Window({ url: "https://hammer-commerce.test/" });
+function catalog(source) {
+  return {
+    products: [
+      {
+        id: `${source}-1`,
+        title: `${source} 便携商品`,
+        handle: `${source}-portable-item`,
+        product_type: "Accessories",
+        variants: [{ available: true, price: "12", compare_at_price: "32" }],
+        images: [{ src: "https://example.com/product.jpg" }],
+      },
+      {
+        id: `${source}-2`,
+        title: `${source} 普通商品`,
+        handle: `${source}-regular-item`,
+        product_type: "Home",
+        variants: [{ available: true, price: "18", compare_at_price: "18" }],
+        images: [],
+      },
+    ],
+  };
+}
+
+test("Android 首页可以输入一句任务、查看执行过程并获得结果", async () => {
+  const window = new Window({ url: "https://hammer-os.test/" });
   window.scrollTo = () => {};
+  const fetchMock = async (url) => ({
+    ok: true,
+    status: 200,
+    async json() { return catalog(new URL(url).hostname); },
+  });
   Object.defineProperties(globalThis, {
     window: { value: window, configurable: true },
     document: { value: window.document, configurable: true },
     navigator: { value: window.navigator, configurable: true },
     localStorage: { value: window.localStorage, configurable: true },
+    fetch: { value: fetchMock, configurable: true },
     IS_REACT_ACT_ENVIRONMENT: { value: true, configurable: true },
   });
   const container = document.createElement("div");
@@ -20,37 +49,20 @@ test("手机首页可以输入商品并获得商业分析报告", async () => {
   const root = createRoot(container);
 
   await act(async () => { root.render(React.createElement(App)); });
-  assert.match(document.querySelector("h1").textContent, /Agent 自己推进/);
-  const productTab = [...document.querySelectorAll(".mode-tabs button")]
-    .find((button) => button.textContent.includes("商品分析"));
-  await act(async () => { productTab.click(); });
-  assert.match(document.querySelector("h1").textContent, /判断能不能卖/);
-
-  const enter = async (selector, value) => {
-    const input = document.querySelector(selector);
-    await act(async () => {
-      const prototype = input.tagName === "TEXTAREA" ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
-      Object.getOwnPropertyDescriptor(prototype, "value").set.call(input, value);
-      input.dispatchEvent(new window.InputEvent("input", { bubbles: true, data: value, inputType: "insertText" }));
-      input.dispatchEvent(new window.Event("change", { bubbles: true }));
-    });
-  };
-  await enter("#product-name", "桌面风扇");
-  await enter("#product-cost", "15");
-  await enter("#product-price", "39.9");
-  await enter("#product-shipping", "5");
-  await enter("#product-note", "夏季商品、小件、一件代发");
+  assert.match(document.querySelector("h1").textContent, /一句任务/);
+  assert.equal(document.querySelector("#mission-input").value, "帮我找今天值得卖的商品");
 
   await act(async () => {
-    document.querySelector(".product-form").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
-    await new Promise((resolve) => setTimeout(resolve, 1750));
+    document.querySelector("#start-mission").click();
+    await new Promise((resolve) => setTimeout(resolve, 1500));
   });
 
-  assert.equal(document.querySelector(".task-heading b").textContent, "分析完成");
-  assert.match(document.querySelector(".business-report").textContent, /商业分析报告/);
-  assert.match(document.querySelector(".business-report").textContent, /桌面风扇/);
-  assert.match(document.querySelector(".business-report").textContent, /19.9/);
-  assert.equal(JSON.parse(localStorage.getItem("hammer-commerce-agent-v0.2-products")).length, 1);
+  assert.equal(document.querySelector(".mission-state").textContent, "执行完成");
+  assert.equal(document.querySelectorAll(".mission-view li.complete").length, 6);
+  assert.match(document.querySelector(".result-view").textContent, /任务完成/);
+  assert.match(document.querySelector(".result-view").textContent, /便携商品/);
+  assert.match(document.querySelector(".result-view").textContent, /预计利润/);
+  assert.ok(JSON.parse(localStorage.getItem("hammer-os-android-last-report")));
 
   await act(async () => { root.unmount(); });
   window.close();
