@@ -91,6 +91,26 @@ export class ProductStore {
     return clone(record);
   }
 
+  updateJudgment(productId, judgment) {
+    const products = this.list();
+    const index = products.findIndex((product) => product.id === productId);
+    if (index < 0) return null;
+    products[index] = {
+      ...products[index],
+      agentDecision: judgment.decision,
+      decisionLabel: judgment.label,
+      decisionConfidence: Number(judgment.confidence) || 0,
+      decisionReasons: [...(judgment.reasons || [])],
+      decisionRisks: [...(judgment.risks || [])],
+      decisionGates: { ...(judgment.gates || {}) },
+      decisionNextAction: judgment.nextAction || "",
+      decisionAt: judgment.judgedAt || new Date().toISOString(),
+      recommendation: judgment.label || products[index].recommendation,
+    };
+    this.storage?.setItem(PRODUCT_STORAGE_KEY, JSON.stringify(products.slice(0, 100)));
+    return clone(products[index]);
+  }
+
   clear() {
     this.storage?.removeItem(PRODUCT_STORAGE_KEY);
   }

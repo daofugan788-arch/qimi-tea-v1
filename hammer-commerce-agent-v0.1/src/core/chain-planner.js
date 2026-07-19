@@ -5,6 +5,7 @@ const BROWSER_TEMPLATE = Object.freeze([
   { tool: "browser.search.plan", title: "规划公开页面搜索", description: "把目标拆成搜索、价格筛选、利润计算和证据任务" },
   { tool: "browser.public.search", title: "Browser Agent 自动找货", description: "打开公开商品页面、搜索并读取公开信息" },
   { tool: "browser.evidence.save", title: "保存价格与截图证据", description: "记录来源、时间、价格截图和公开商品信息" },
+  { tool: "browser.product.judge", title: "Agent 自动判断是否值得卖", description: "根据利润门槛和公开证据决定测试、观察或放弃" },
   { tool: "browser.report.compose", title: "生成今日选品报告", description: "汇总候选、预计利润、推荐和证据" },
 ]);
 

@@ -16,7 +16,12 @@ export class ChainProductDiscoveryTool {
     const attempted = new Set(runtime.chain.context.attemptedProductIds || []);
     const candidate = products
       .filter((product) => !attempted.has(product.id))
-      .sort((a, b) => b.score - a.score || b.profitRate - a.profitRate)[0];
+      .filter((product) => !product.sourceUrl || product.agentDecision === "TEST")
+      .sort((a, b) => {
+        const browserConfidence = (b.decisionConfidence || 0) - (a.decisionConfidence || 0);
+        if ((a.sourceUrl || b.sourceUrl) && browserConfidence !== 0) return browserConfidence;
+        return b.score - a.score || b.profitRate - a.profitRate;
+      })[0];
     if (!candidate) {
       return blocked(
         products.length ? "NO_VIABLE_PRODUCTS" : "NEED_PRODUCTS",
@@ -37,7 +42,10 @@ export const chainProfitScreenTool = {
   async execute(_input, runtime) {
     const product = runtime.chain.context.outputs["chain.product.discover"]?.product;
     if (!product) throw new Error("没有可分析的候选商品");
-    const viable = product.profit > 0 && product.profitRate >= 20 && product.score >= 50;
+    const viable = product.profit > 0
+      && product.profitRate >= 20
+      && product.score >= 50
+      && (!product.sourceUrl || product.agentDecision === "TEST");
     if (!viable) {
       const discoveryStep = runtime.chain.steps.findIndex((step) => step.tool === "chain.product.discover");
       return {
@@ -45,7 +53,9 @@ export const chainProfitScreenTool = {
         resetToStep: Math.max(0, discoveryStep),
         data: {
           product,
-          reason: product.profit <= 0 ? "没有销售利润" : product.profitRate < 20 ? "利润率低于20%" : "商品评分低于50分",
+          reason: product.sourceUrl && product.agentDecision !== "TEST"
+            ? "商品判断 Agent 未批准进入测试"
+            : product.profit <= 0 ? "没有销售利润" : product.profitRate < 20 ? "利润率低于20%" : "商品评分低于50分",
         },
       };
     }
@@ -105,7 +115,7 @@ export const chainPublishPrepareTool = {
     const content = runtime.chain.context.outputs["chain.content.generate"];
     return blocked(
       "CONFIRM_PUBLISH",
-      "发布资料已经准备好。Browser Agent 尚未接入，当前需要主人手动发布后确认。",
+      "发布资料已经准备好。自动发布不在当前授权范围，需要主人确认后再操作。",
       { title: content?.title, description: content?.description },
     );
   },

@@ -9,6 +9,7 @@ import { ProfitCalculatorTool } from "../src/tools/profit-calculator-tool.js";
 import { parseQuickProductText } from "../src/tools/product-quick-capture-tool.js";
 import { BrowserSearchPlanner } from "../src/core/browser-search-planner.js";
 import { BrowserTaskStore } from "../server/browser-task-store.js";
+import { judgeProduct, PRODUCT_DECISION } from "../src/core/product-judgment-engine.js";
 
 class MemoryStorage {
   constructor() { this.data = new Map(); }
@@ -296,6 +297,27 @@ test("Browser Service 任务记录 WAITING 到 SUCCESS 状态", () => {
   assert.equal(store.get(waiting.id).result.itemCount, 3);
 });
 
+test("商品判断 Agent 根据利润与公开证据决定测试、观察或放弃", () => {
+  const base = {
+    name: "桌面小风扇",
+    cost: 15,
+    price: 39.9,
+    profit: 24.9,
+    profitRate: 62.41,
+    sourceUrl: "https://example.com/product/1",
+    screenshotUrl: "https://example.com/evidence/1.png",
+    capturedAt: "2026-07-19T08:00:00.000Z",
+    salesText: "已售 200+",
+    reviewText: "56 条评价",
+    ratingText: "4.8",
+  };
+  const plan = { constraints: { minProfit: 20 } };
+
+  assert.equal(judgeProduct(base, plan).decision, PRODUCT_DECISION.TEST);
+  assert.equal(judgeProduct({ ...base, salesText: "未公开", reviewText: "未公开" }, plan).decision, PRODUCT_DECISION.WATCH);
+  assert.equal(judgeProduct({ ...base, profit: 0, profitRate: 0 }, plan).decision, PRODUCT_DECISION.REJECT);
+});
+
 test("Browser Agent 一句话完成公开搜索、证据保存、利润筛选和报告", async () => {
   const storage = new MemoryStorage();
   let requestBody = null;
@@ -353,8 +375,52 @@ test("Browser Agent 一句话完成公开搜索、证据保存、利润筛选和
     title: "桌面小风扇",
   });
   assert.equal(report.title, "今日选品报告");
+  assert.equal(chain.context.outputs["browser.product.judge"].selectedProduct.name, "桌面小风扇");
+  assert.equal(agent.getProducts()[0].agentDecision, "TEST");
   assert.equal(report.items[0].sourcePrice, 15.8);
   assert.equal(report.items[0].estimatedProfit, 24.1);
-  assert.deepEqual(report.operationReduction, { before: 5, after: 1, reduced: 4 });
-  assert.ok(chain.steps.slice(0, 4).every((step) => step.status === "SUCCESS"));
+  assert.equal(report.worthyCount, 1);
+  assert.deepEqual(report.operationReduction, { before: 6, after: 1, reduced: 5 });
+  assert.ok(chain.steps.slice(0, 5).every((step) => step.status === "SUCCESS"));
+});
+
+test("商品判断 Agent 会放弃无利润候选并阻止进入发布准备", async () => {
+  const storage = new MemoryStorage();
+  const browserFetch = async () => ({
+    ok: true,
+    status: 200,
+    async json() {
+      return {
+        runId: "BRW-REJECT-1",
+        items: [{
+          id: "PUBLIC-LOSS",
+          name: "无利润候选",
+          source: "公开测试页",
+          sourceUrl: "https://example.com/product/loss",
+          price: 20,
+          marketReference: 20,
+          estimatedProfit: 0,
+          salesText: "未公开",
+          reviewText: "未公开",
+          ratingText: "2.5",
+          screenshotUrl: "https://browser.test/evidence/loss.png",
+          capturedAt: "2026-07-19T08:00:00.000Z",
+        }],
+      };
+    },
+  });
+  const agent = createCommerceAgent({
+    storage,
+    stepDelay: 0,
+    browserGatewayUrl: "https://browser.test",
+    browserFetch,
+  });
+
+  const chain = await agent.runTaskChain("找20元以内的小商品");
+
+  assert.equal(chain.status, "BLOCKED");
+  assert.equal(chain.blocked.actionType, "NO_VIABLE_PRODUCTS");
+  assert.equal(agent.getProducts()[0].agentDecision, "REJECT");
+  assert.equal(chain.context.outputs["browser.report.compose"].worthyCount, 0);
+  assert.equal(chain.context.outputs["chain.content.generate"], undefined);
 });

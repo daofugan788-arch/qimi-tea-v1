@@ -1,5 +1,6 @@
 import { TOOL_OUTCOME } from "../core/chain-status.js";
 import { BrowserSearchPlanner } from "../core/browser-search-planner.js";
+import { judgeProducts, PRODUCT_DECISION } from "../core/product-judgment-engine.js";
 
 const success = (data) => ({ outcome: TOOL_OUTCOME.SUCCESS, data });
 const blocked = (actionType, reason, data = null) => ({ outcome: TOOL_OUTCOME.BLOCKED, actionType, reason, data });
@@ -77,6 +78,37 @@ export class BrowserEvidenceSaveTool {
   }
 }
 
+export class BrowserProductJudgeTool {
+  constructor(productStore) {
+    this.name = "browser.product.judge";
+    this.description = "根据利润门槛和真实公开证据自动决定测试、观察或放弃";
+    this.riskLevel = "LOW";
+    this.productStore = productStore;
+  }
+
+  async execute(_input, runtime) {
+    const evidence = runtime.chain.context.outputs["browser.evidence.save"];
+    const plan = runtime.chain.context.outputs["browser.search.plan"];
+    if (evidence?.skipped) return success({ skipped: true, products: [], selectedProduct: null });
+    const judged = judgeProducts(evidence?.products || [], plan);
+    const products = judged.map(({ product, judgment }) => (
+      this.productStore.updateJudgment(product.id, judgment) || { ...product, judgment }
+    ));
+    const selectedProduct = products.find((product) => product.agentDecision === PRODUCT_DECISION.TEST) || null;
+    return success({
+      skipped: false,
+      products,
+      selectedProduct,
+      counts: {
+        test: products.filter((product) => product.agentDecision === PRODUCT_DECISION.TEST).length,
+        watch: products.filter((product) => product.agentDecision === PRODUCT_DECISION.WATCH).length,
+        reject: products.filter((product) => product.agentDecision === PRODUCT_DECISION.REJECT).length,
+      },
+      operationRemoved: "用户不再逐个判断候选商品",
+    });
+  }
+}
+
 export const browserReportComposeTool = {
   name: "browser.report.compose",
   description: "根据公开页面证据生成今日选品报告",
@@ -84,8 +116,9 @@ export const browserReportComposeTool = {
   async execute(_input, runtime) {
     const plan = runtime.chain.context.outputs["browser.search.plan"];
     const evidence = runtime.chain.context.outputs["browser.evidence.save"];
-    if (evidence?.skipped) return success({ kind: "BROWSER_SELECTION_REPORT", skipped: true, items: [] });
-    const items = (evidence?.products || []).map((product) => ({
+    const judgment = runtime.chain.context.outputs["browser.product.judge"];
+    if (evidence?.skipped || judgment?.skipped) return success({ kind: "BROWSER_SELECTION_REPORT", skipped: true, items: [] });
+    const items = (judgment?.products || []).map((product) => ({
       id: product.id,
       name: product.name,
       source: product.source,
@@ -98,8 +131,14 @@ export const browserReportComposeTool = {
       ratingText: product.ratingText,
       imageUrl: product.imageUrl,
       screenshotUrl: product.screenshotUrl,
-      recommendation: product.profit >= (plan?.constraints?.minProfit ?? 0) ? "测试" : "观察",
-      reason: product.reason || "公开价格证据完整，建议小批量验证真实成交。",
+      recommendation: product.decisionLabel || "等待判断",
+      decision: product.agentDecision || "WATCH",
+      decisionConfidence: product.decisionConfidence || 0,
+      reasons: product.decisionReasons || [],
+      risks: product.decisionRisks || [],
+      nextAction: product.decisionNextAction || "",
+      selected: judgment?.selectedProduct?.id === product.id,
+      reason: (product.decisionReasons || []).join("；") || product.reason || "公开证据等待进一步判断。",
     }));
     return success({
       kind: "BROWSER_SELECTION_REPORT",
@@ -107,10 +146,13 @@ export const browserReportComposeTool = {
       title: "今日选品报告",
       query: plan?.query,
       discovered: items.length,
+      worthyCount: judgment?.counts?.test || 0,
+      decisionCounts: judgment?.counts,
+      selectedProductId: judgment?.selectedProduct?.id || null,
       evidenceSessionId: evidence?.session?.id,
       capturedAt: evidence?.session?.capturedAt,
       items,
-      operationReduction: { before: 5, after: 1, reduced: 4 },
+      operationReduction: { before: 6, after: 1, reduced: 5 },
       notice: "价格及页面提供的销量、评价字段来自抓取时可公开访问的页面；未公开字段会明确标记，预计利润不等于实际成交利润。",
     });
   },
@@ -121,6 +163,7 @@ export function createBrowserTools({ browserClient, evidenceStore, productStore 
     new BrowserSearchPlanTool(),
     new BrowserPublicSearchTool(browserClient),
     new BrowserEvidenceSaveTool({ evidenceStore, productStore }),
+    new BrowserProductJudgeTool(productStore),
     browserReportComposeTool,
   ];
 }

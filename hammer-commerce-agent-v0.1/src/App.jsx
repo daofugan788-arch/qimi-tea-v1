@@ -156,13 +156,13 @@ function BrowserSelectionReport({ report }) {
     <section className="report-card browser-report">
       <div className="report-kicker">BROWSER AGENT · REAL EXECUTION</div>
       <h2>{report.title}</h2>
-      <p className="report-summary">自动搜索“{report.query}”，发现 {report.discovered} 个符合条件的公开页面候选。</p>
+      <p className="report-summary">自动搜索“{report.query}”，发现 {report.discovered} 个候选，Agent 判定 {report.worthyCount} 个值得小规模测试。</p>
       <div className="operation-reduction"><span>人工操作</span><b>{report.operationReduction.before} 步 → {report.operationReduction.after} 步</b><small>少做 {report.operationReduction.reduced} 步</small></div>
       <div className="browser-candidate-list">
         {report.items.slice(0, 6).map((item) => (
           <article key={item.id}>
             {(item.screenshotUrl || item.imageUrl) && <img src={item.screenshotUrl || item.imageUrl} alt={`${item.name}公开页面证据`} loading="lazy" />}
-            <div><span>{item.source}</span><h3>{item.name}</h3><p>来源价 {money(item.sourcePrice)} · 市场参考 {money(item.marketReference)}</p><p>预计利润 {money(item.estimatedProfit)} · {item.recommendation}</p><small>销量 {item.salesText} · 评价 {item.reviewText} · 评分 {item.ratingText}</small>{item.sourceUrl && <a href={item.sourceUrl} target="_blank" rel="noreferrer">查看公开来源 ↗</a>}</div>
+            <div><span>{item.source}</span><h3>{item.name}</h3><p>来源价 {money(item.sourcePrice)} · 市场参考 {money(item.marketReference)}</p><p>Agent判断：{item.recommendation} · 置信度 {item.decisionConfidence}%</p><p>预计利润 {money(item.estimatedProfit)} · {item.reason}</p><small>销量 {item.salesText} · 评价 {item.reviewText} · 评分 {item.ratingText}</small>{item.sourceUrl && <a href={item.sourceUrl} target="_blank" rel="noreferrer">查看公开来源 ↗</a>}</div>
           </article>
         ))}
       </div>

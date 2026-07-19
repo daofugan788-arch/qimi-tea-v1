@@ -89,6 +89,7 @@ docker run -p 8787:8787 --env-file .env.browser hammer-browser-agent
 src/core/browser-search-planner.js     Search Planner
 src/core/browser-agent-client.js       手机端 Browser Gateway 客户端
 src/core/evidence-store.js             手机端证据索引
+src/core/product-judgment-engine.js     商品证据判断引擎
 src/tools/browser-tools.js             Browser/Evidence/Report Tools
 server/public-browser-runner.js        Playwright 公开页面执行器
 server/browser-agent-server.js         Browser Agent HTTP 服务
@@ -106,3 +107,16 @@ npm run build
 ```
 
 真实执行验收已通过：Browser Service 打开 Webscraper 公开测试商城，自动抓取 3 个商品，保存 1 张整页截图、3 张商品截图和 JSON 会话证据，并由前端 Task Chain 生成《今日选品报告》。该来源只用于验证真实浏览闭环；接入商业平台时仍需先确认公开访问规则并配置平台白名单适配器。
+
+## Sprint 06：商品判断 Agent
+
+Browser Agent 找到商品后，新增 `browser.product.judge` 自动判断步骤，不再让用户逐个查看和选择：
+
+- `TEST`：利润、利润率、来源证据和公开需求信号达到门槛，自动进入商品资料生成
+- `WATCH`：存在利润空间，但销量、评价或成交价证据不足，继续找同类来源补证据
+- `REJECT`：无正利润、利润缓冲过低或公开评分风险明显，停止生成资料并尝试下一个商品
+- 判断结果写回商品库，保存理由、风险、置信度、门槛结果和下一步动作
+- 不增加新页面，判断结果直接合并进《今日选品报告》
+- 自动发布仍保持人工确认，不进行登录、发布、下单或付款
+
+验收结果：真实公开商品抓取后，Agent 自动选择 `Nokia 123` 为 `TEST`，继续生成商品资料并停在安全发布确认点。人工流程由“搜索、打开、记录、算利润、判断、写报告”6步减少为“一句话等待报告”1步。
