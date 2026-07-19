@@ -7,7 +7,9 @@ import {
   BaseEmployee,
   createHammerOS,
   definePlugin,
+  EMPLOYEE_HEALTH_CONDITION,
   EMPLOYEE_STATE,
+  EmployeeHeartbeatMonitor,
   EmployeeLifecycle,
   JsonFileMemoryAdapter,
 } from "../hammer-os/index.js";
@@ -221,6 +223,112 @@ test("Employee 每个心跳上报当前 Mission、进度、等待和 Need Help",
   release();
   await completion;
   await hammer.supervisor.retire(hired.id);
+});
+
+test("Heartbeat Monitor 识别卡住、等待过久、求助、失联和死亡", () => {
+  let nowMs = Date.parse("2026-07-19T08:00:00.000Z");
+  const now = () => new Date(nowMs);
+  const monitor = new EmployeeHeartbeatMonitor({
+    now,
+    stuckAfterMs: 40,
+    waitingTooLongAfterMs: 60,
+    staleAfterMs: 50,
+    deadAfterMs: 100,
+  });
+  const payload = {
+    employeeId: "health-check-employee",
+    employeeType: "research",
+    name: "HealthCheckEmployee",
+    state: EMPLOYEE_STATE.WORKING,
+    currentMission: { id: "health-mission" },
+    progress: 20,
+    waiting: null,
+    needHelp: false,
+  };
+
+  monitor.record(payload);
+  nowMs += 41;
+  monitor.record(payload);
+  assert.equal(monitor.status(payload.employeeId).condition, EMPLOYEE_HEALTH_CONDITION.STUCK);
+
+  monitor.record({ ...payload, progress: 30 });
+  assert.equal(monitor.status(payload.employeeId).condition, EMPLOYEE_HEALTH_CONDITION.HEALTHY);
+
+  monitor.record({ ...payload, state: EMPLOYEE_STATE.WAITING, waiting: "等待工具" });
+  nowMs += 61;
+  monitor.record({ ...payload, state: EMPLOYEE_STATE.WAITING, waiting: "等待工具" });
+  assert.equal(monitor.status(payload.employeeId).condition, EMPLOYEE_HEALTH_CONDITION.WAITING_TOO_LONG);
+
+  monitor.record({ ...payload, needHelp: true, helpReason: "需要 Supervisor 介入" });
+  assert.equal(monitor.status(payload.employeeId).condition, EMPLOYEE_HEALTH_CONDITION.NEED_HELP);
+
+  nowMs += 51;
+  assert.equal(monitor.status(payload.employeeId).condition, EMPLOYEE_HEALTH_CONDITION.STALE);
+  nowMs += 50;
+  assert.equal(monitor.status(payload.employeeId).condition, EMPLOYEE_HEALTH_CONDITION.DEAD);
+});
+
+test("Supervisor Watchdog 自动开启、去重、持久化并关闭员工异常", async () => {
+  let releaseMission;
+  let missionStarted;
+  let nowMs = Date.parse("2026-07-19T08:00:00.000Z");
+  const now = () => new Date(nowMs);
+  const started = new Promise((resolve) => { missionStarted = resolve; });
+  class StalledEmployee extends BaseEmployee {
+    static employeeType = "stalled-test";
+    async execute() {
+      this.reportProgress(25, "work-started");
+      await this.heartbeat();
+      missionStarted();
+      await new Promise((resolve) => { releaseMission = resolve; });
+      return { completed: true };
+    }
+  }
+
+  const hammer = createHammerOS({
+    employeeNow: now,
+    employeeHealth: {
+      stuckAfterMs: 40,
+      waitingTooLongAfterMs: 80,
+      staleAfterMs: 200,
+      deadAfterMs: 400,
+      autoStartWatchdog: false,
+    },
+  });
+  const hired = await hammer.supervisor.hire(StalledEmployee, {
+    id: "watchdog-stalled",
+    now,
+    heartbeatIntervalMs: 999_999,
+  });
+  const completion = hammer.supervisor.assign(hired.id, { id: "watchdog-mission", goal: "验证卡住识别" });
+  await started;
+
+  nowMs += 41;
+  await hammer.employeeRuntime.get(hired.id).heartbeat();
+  const openReport = await hammer.supervisor.inspectWorkforce();
+  await hammer.employeeRuntime.get(hired.id).heartbeat();
+  const openIncidents = await hammer.memoryService.list("employee.incidents");
+
+  assert.equal(openReport.incidents.length, 1);
+  assert.equal(openReport.incidents[0].condition, EMPLOYEE_HEALTH_CONDITION.STUCK);
+  assert.equal(openReport.incidents[0].severity, "HIGH");
+  assert.equal(openIncidents.length, 1);
+  assert.equal(openIncidents[0].value.status, "OPEN");
+  assert.ok(openIncidents[0].value.observations > 1);
+
+  releaseMission();
+  await completion;
+  await hammer.employeeRuntime.get(hired.id).heartbeat();
+  const recoveredReport = await hammer.supervisor.inspectWorkforce();
+  const resolvedIncidents = await hammer.memoryService.list("employee.incidents");
+  const roster = await hammer.memoryService.read("employee.roster", hired.id);
+
+  assert.equal(recoveredReport.incidents.length, 0);
+  assert.equal(resolvedIncidents.length, 1);
+  assert.equal(resolvedIncidents[0].value.status, "RESOLVED");
+  assert.equal(roster.healthIncident, null);
+  await hammer.supervisor.retire(hired.id);
+  hammer.supervisor.close();
 });
 
 test("Knowledge Center 让不同 Employee 共享规则且保留作者", async () => {

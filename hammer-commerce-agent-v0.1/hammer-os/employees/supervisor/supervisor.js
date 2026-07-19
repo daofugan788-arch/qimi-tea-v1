@@ -6,8 +6,22 @@ function employeeId(type) {
   return `EMP-${String(type || "employee").toUpperCase()}-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 }
 
+function incidentId(employeeId) {
+  return `EINC-${String(employeeId).replace(/[^a-z0-9]/gi, "-").toUpperCase()}-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+}
+
 export class Supervisor {
-  constructor({ runtime, workspaceFactory, messageBus, knowledgeCenter, eventBus = null, memoryService = null, heartbeatMonitor = null } = {}) {
+  constructor({
+    runtime,
+    workspaceFactory,
+    messageBus,
+    knowledgeCenter,
+    eventBus = null,
+    memoryService = null,
+    heartbeatMonitor = null,
+    watchdogIntervalMs = 30_000,
+    autoStartWatchdog = true,
+  } = {}) {
     this.id = "supervisor";
     this.runtime = runtime;
     this.workspaceFactory = workspaceFactory;
@@ -17,7 +31,11 @@ export class Supervisor {
     this.memoryService = memoryService;
     this.heartbeatMonitor = heartbeatMonitor || new EmployeeHeartbeatMonitor();
     this.employeeTypes = new Map();
+    this.activeIncidents = new Map();
+    this.watchdogIntervalMs = Math.max(10, Number(watchdogIntervalMs) || 30_000);
+    this.watchdogTimer = null;
     this.unsubscribe = this.messageBus.register(this.id, (message) => this.onMessage(message));
+    if (autoStartWatchdog) this.startWatchdog();
   }
 
   registerEmployeeType(EmployeeClass, { pluginId = "core" } = {}) {
@@ -83,6 +101,7 @@ export class Supervisor {
   async retire(employeeId, reason = "retired-by-supervisor") {
     const employee = this.runtime.get(employeeId);
     const snapshot = employee?.snapshot() || null;
+    await this.resolveIncident(employeeId, "employee-retired");
     const status = await this.runtime.retire(employeeId, reason);
     this.heartbeatMonitor.remove(employeeId);
     if (this.memoryService) {
@@ -158,10 +177,112 @@ export class Supervisor {
     return this.runtime.list().map((employee) => ({ ...employee, health: this.heartbeatMonitor.status(employee.id) }));
   }
 
+  async evaluateEmployee(employeeId) {
+    const candidate = this.heartbeatMonitor.incident(employeeId);
+    const active = this.activeIncidents.get(employeeId);
+    if (!candidate) {
+      if (active) await this.resolveIncident(employeeId, "employee-health-recovered");
+      return null;
+    }
+    if (active?.condition === candidate.condition) {
+      const updated = {
+        ...active,
+        ...candidate,
+        id: active.id,
+        status: active.status,
+        openedAt: active.openedAt,
+        lastObservedAt: candidate.detectedAt,
+        observations: active.observations + 1,
+      };
+      this.activeIncidents.set(employeeId, updated);
+      if (this.memoryService) await this.memoryService.write("employee.incidents", updated.id, updated);
+      return { ...updated };
+    }
+    if (active) await this.resolveIncident(employeeId, `condition-changed-to-${candidate.condition}`);
+    const incident = {
+      ...candidate,
+      id: incidentId(employeeId),
+      status: "OPEN",
+      openedAt: candidate.detectedAt,
+      lastObservedAt: candidate.detectedAt,
+      observations: 1,
+    };
+    this.activeIncidents.set(employeeId, incident);
+    if (this.memoryService) await this.memoryService.write("employee.incidents", incident.id, incident);
+    await this.persistEmployee(employeeId, {
+      healthIncident: {
+        id: incident.id,
+        condition: incident.condition,
+        severity: incident.severity,
+        openedAt: incident.openedAt,
+      },
+    });
+    await this.eventBus?.publish("employee.supervisor.incident", { incident }, { source: "employee.supervisor" });
+    return { ...incident };
+  }
+
+  async resolveIncident(employeeId, resolution = "resolved") {
+    const active = this.activeIncidents.get(employeeId);
+    if (!active) return null;
+    const resolved = {
+      ...active,
+      status: "RESOLVED",
+      resolution: String(resolution || "resolved"),
+      resolvedAt: this.heartbeatMonitor.now().toISOString(),
+    };
+    this.activeIncidents.delete(employeeId);
+    if (this.memoryService) await this.memoryService.write("employee.incidents", resolved.id, resolved);
+    await this.persistEmployee(employeeId, { healthIncident: null });
+    await this.eventBus?.publish("employee.supervisor.incident.resolved", { incident: resolved }, { source: "employee.supervisor" });
+    return resolved;
+  }
+
+  async inspectWorkforce() {
+    const employeeIds = this.runtime.list().map((employee) => employee.id);
+    for (const employeeId of employeeIds) await this.evaluateEmployee(employeeId);
+    const employees = employeeIds.map((employeeId) => this.employee(employeeId));
+    return {
+      checkedAt: this.heartbeatMonitor.now().toISOString(),
+      totalEmployees: employees.length,
+      healthyEmployees: employees.filter((employee) => !this.activeIncidents.has(employee.id)).length,
+      employees,
+      incidents: [...this.activeIncidents.values()].map((incident) => ({ ...incident })),
+    };
+  }
+
+  startWatchdog({ intervalMs = this.watchdogIntervalMs, immediate = false } = {}) {
+    this.stopWatchdog();
+    this.watchdogIntervalMs = Math.max(10, Number(intervalMs) || this.watchdogIntervalMs);
+    this.watchdogTimer = setInterval(() => this.runWatchdogInspection(), this.watchdogIntervalMs);
+    this.watchdogTimer.unref?.();
+    if (immediate) this.runWatchdogInspection();
+    return this.watchdogIntervalMs;
+  }
+
+  runWatchdogInspection() {
+    void this.inspectWorkforce().catch((error) => {
+      void this.eventBus?.publish("employee.supervisor.watchdog.failed", {
+        error: error?.message || "Supervisor Watchdog inspection failed",
+      }, { source: "employee.supervisor" });
+    });
+  }
+
+  stopWatchdog() {
+    if (this.watchdogTimer) clearInterval(this.watchdogTimer);
+    this.watchdogTimer = null;
+  }
+
+  close() {
+    this.stopWatchdog();
+    this.unsubscribe?.();
+    this.unsubscribe = null;
+  }
+
   async onMessage(message) {
     if (message.type === "EMPLOYEE_HEARTBEAT") {
       const heartbeat = this.heartbeatMonitor.record(message.payload);
       await this.persistEmployee(message.payload.employeeId);
+      await this.evaluateEmployee(message.payload.employeeId);
       await this.eventBus?.publish("employee.supervisor.heartbeat", { heartbeat }, { source: "employee.supervisor" });
       return heartbeat;
     }

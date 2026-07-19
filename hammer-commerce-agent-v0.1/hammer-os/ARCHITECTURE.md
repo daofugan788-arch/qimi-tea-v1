@@ -19,7 +19,7 @@ flowchart TD
 3. Employee Context 只暴露自己的 Workspace、Message Bus 和 Knowledge Center；不暴露 Runtime、Memory Service 或 Tool Registry。
 4. Employee 之间禁止持有或调用另一个 Employee 实例，协作必须发送 `EmployeeMessage`。
 5. 每个 Employee 拥有独立 Workspace；共享事实统一写入 Knowledge Center。
-6. Supervisor 通过 Heartbeat 判断 `HEALTHY / WAITING / NEED_HELP / STALE / DEAD`。
+6. Supervisor 通过 Heartbeat 和进度时间判断 `HEALTHY / WAITING / STUCK / WAITING_TOO_LONG / NEED_HELP / STALE / DEAD`。
 7. Commerce 业务冻结在旧 Plugin 中。删除或不安装 Commerce Plugin 不影响 Employee Framework 启动。
 
 ## Employee Lifecycle
@@ -89,7 +89,22 @@ Research Employee
 }
 ```
 
-Supervisor 保存最后心跳。90 秒没有心跳标为 `STALE`，180 秒标为 `DEAD`；员工主动求助标为 `NEED_HELP`。
+Supervisor 保存最后心跳和最后进度变化时间。90 秒没有心跳标为 `STALE`，180 秒标为 `DEAD`；正在执行 Mission 但进度长时间不变标为 `STUCK`，等待超时标为 `WAITING_TOO_LONG`，员工主动求助标为 `NEED_HELP`。
+
+## Supervisor Watchdog
+
+Watchdog 默认每 30 秒检查在职 Employee。异常发生时写入 `employee.incidents`，并发布 `employee.supervisor.incident` Event；同一 Employee 的同一异常只保留一个打开事件。心跳和进度恢复后，事件改为 `RESOLVED`并发布关闭 Event。
+
+```mermaid
+flowchart TD
+  H["Heartbeat + Progress"] --> W["Supervisor Watchdog"]
+  W --> D{"Health Condition"}
+  D -->|"Normal"| R["Resolve Incident"]
+  D -->|"Abnormal"| I["Open or Update Incident"]
+  I --> M["Memory + Event Bus"]
+```
+
+Watchdog 不写任何 Commerce 规则，也不直接代替 Employee 做业务决策。
 
 ## Knowledge Center
 

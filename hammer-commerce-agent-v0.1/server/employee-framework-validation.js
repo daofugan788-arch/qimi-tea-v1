@@ -43,6 +43,9 @@ const completed = await hammer.supervisor.assign(research.id, {
   goal: "验证两个 Employee 通过 Message 协作",
   input: { financeId: finance.id, amount: 60 },
 });
+await hammer.employeeRuntime.get(research.id).heartbeat();
+await hammer.employeeRuntime.get(finance.id).heartbeat();
+const workforce = await hammer.supervisor.inspectWorkforce();
 
 const output = {
   hammerStartedWithoutCommerce: !hammer.pluginManager.get("commerce"),
@@ -50,9 +53,15 @@ const output = {
   employees: hammer.supervisor.list(),
   collaboration: completed.result,
   sharedKnowledge: await hammer.knowledgeCenter.read("experience", "framework-validation"),
+  watchdog: {
+    totalEmployees: workforce.totalEmployees,
+    healthyEmployees: workforce.healthyEmployees,
+    incidents: workforce.incidents,
+  },
   lifecycle: hammer.employeeRuntime.get(research.id).lifecycle.history,
 };
 
 process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
 await hammer.supervisor.retire(research.id);
 await hammer.supervisor.retire(finance.id);
+hammer.supervisor.close();
