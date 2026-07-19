@@ -45,8 +45,13 @@ test("Android 首页可以输入一句任务、查看执行过程并获得结果
     IS_REACT_ACT_ENVIRONMENT: { value: true, configurable: true },
   });
   let copiedReport = "";
+  let sharedReport = null;
   Object.defineProperty(window.navigator, "clipboard", {
     value: { async writeText(value) { copiedReport = value; } },
+    configurable: true,
+  });
+  Object.defineProperty(window.navigator, "share", {
+    value: async (value) => { sharedReport = value; },
     configurable: true,
   });
   const container = document.createElement("div");
@@ -73,6 +78,14 @@ test("Android 首页可以输入一句任务、查看执行过程并获得结果
   assert.match(document.querySelector(".copy-report-button").textContent, /已复制/);
   assert.match(copiedReport, /Hammer Mission 执行报告/);
   assert.match(copiedReport, /公开成本参考/);
+
+  await act(async () => {
+    document.querySelector(".share-report-button").click();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  });
+  assert.match(document.querySelector(".share-report-button").textContent, /已打开分享/);
+  assert.match(sharedReport.text, /Hammer Mission 执行报告/);
+  assert.match(sharedReport.text, /预计利润/);
 
   await act(async () => { root.unmount(); });
   window.close();

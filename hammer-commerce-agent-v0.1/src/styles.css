@@ -80,10 +80,13 @@ button { -webkit-tap-highlight-color: transparent; }
 .source-note { background: #fff2d0; color: #79632f; }
 .error-card { padding: 18px; border: 1px solid #edcac7; border-radius: 18px; background: #fff1ef; color: #792d29; }
 .error-card p { font-size: 11px; line-height: 1.6; }
-.error-card button, .again-button, .copy-report-button { min-height: 43px; border: 0; border-radius: 12px; background: #171a15; color: #fff; font-size: 12px; font-weight: 850; }
+.error-card button, .again-button, .copy-report-button, .share-report-button { min-height: 43px; border: 0; border-radius: 12px; background: #171a15; color: #fff; font-size: 12px; font-weight: 850; }
 .error-card button { padding: 0 18px; }
 .again-button { width: 100%; margin-top: 13px; }
-.copy-report-button { width: 100%; min-height: 50px; margin-top: 10px; background: #d9ff54; color: #1a1e13; }
+.result-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 10px; }
+.copy-report-button, .share-report-button { width: 100%; min-height: 50px; }
+.copy-report-button { background: #e5e8df; color: #1a1e13; }
+.share-report-button { background: #d9ff54; color: #1a1e13; }
 .android-app > footer { margin-top: 25px; color: #969b91; font-size: 9px; text-align: center; }
 
 @media (min-width: 600px) {
