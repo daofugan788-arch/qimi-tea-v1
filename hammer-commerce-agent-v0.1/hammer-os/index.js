@@ -9,8 +9,9 @@ import { HammerRuntime } from "./core/runtime/hammer-runtime.js";
 import { RuntimeScheduler } from "./core/scheduler/runtime-scheduler.js";
 import { PluginManager } from "./plugins/plugin-manager.js";
 import { ToolRegistry } from "./tools/tool-registry.js";
+import { createEmployeeFramework } from "./employees/index.js";
 
-export function createHammerOS({ plugins = [], memoryAdapter = undefined, now = undefined } = {}) {
+export function createHammerOS({ plugins = [], memoryAdapter = undefined, now = undefined, employeeNow = undefined } = {}) {
   const eventBus = new EventBus();
   const memoryService = new MemoryService({ adapter: memoryAdapter, eventBus });
   const decisionService = new DecisionService({ eventBus });
@@ -40,6 +41,7 @@ export function createHammerOS({ plugins = [], memoryAdapter = undefined, now = 
     scheduler,
   });
   plugins.forEach((plugin) => pluginManager.install(plugin));
+  const employeeFramework = createEmployeeFramework({ eventBus, memoryService, ...(employeeNow ? { now: employeeNow } : {}) });
   return {
     orchestrator,
     runtime,
@@ -52,6 +54,7 @@ export function createHammerOS({ plugins = [], memoryAdapter = undefined, now = 
     agentRegistry,
     plannerRegistry,
     pluginManager,
+    ...employeeFramework,
   };
 }
 
@@ -59,3 +62,4 @@ export { BaseAgent } from "./agents/base-agent.js";
 export { JsonFileMemoryAdapter } from "./core/memory/json-file-memory-adapter.js";
 export { definePlugin } from "./plugins/plugin-contract.js";
 export { TOOL_RISK, TOOL_TYPE } from "./tools/tool-types.js";
+export * from "./employees/index.js";

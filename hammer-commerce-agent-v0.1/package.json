@@ -1,7 +1,7 @@
 {
   "name": "hammer-os",
   "private": true,
-  "version": "0.8.0",
+  "version": "0.9.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
@@ -9,6 +9,7 @@
     "preview": "vite preview --host 0.0.0.0",
     "test": "node --import tsx --test",
     "test:architecture": "node --import tsx --test tests/hammer-os.test.js",
+    "test:employee": "node --import tsx --test tests/employee-framework.test.js",
     "test:sprint07": "node --import tsx --test tests/commerce-employee.test.js",
     "browser:serve": "node server/browser-agent-server.js",
     "employee:run": "node server/commerce-employee-worker.js",
@@ -19,7 +20,8 @@
     "employee:alpha": "node server/commerce-alpha-cron.js --mode full",
     "employee:heartbeat": "node server/commerce-alpha-cron.js --mode heartbeat",
     "employee:morning": "node server/commerce-alpha-cron.js --mode morning",
-    "employee:evening": "node server/commerce-alpha-cron.js --mode evening"
+    "employee:evening": "node server/commerce-alpha-cron.js --mode evening",
+    "employee:framework:validate": "node server/employee-framework-validation.js"
   },
   "dependencies": {
     "@sparticuz/chromium": "149.0.0",

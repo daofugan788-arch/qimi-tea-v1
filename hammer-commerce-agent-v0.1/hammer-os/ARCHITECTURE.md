@@ -1,90 +1,146 @@
-# Hammer OS Architecture Freeze No.001
+# Hammer OS Architecture Sprint 2 — Employee Framework
 
-Hammer OS 是 Agent Operating System。Commerce 只是在 OS 上安装的第一个 Plugin。
+Hammer OS 的新核心不是某个 Commerce 功能，而是一个可以招聘、管理和协作多个数字员工的 Employee Runtime。旧 Agent/Plugin Runtime 暂时保留为兼容层，新能力统一使用 Employee 命名。
 
 ```mermaid
 flowchart TD
-  O["① Orchestrator<br/>Mission 与总调度"] --> R["② Runtime<br/>Task · Worker · Retry · Queue · Schedule · Checkpoint"]
-  R --> A["③ Agent<br/>BaseAgent 生命周期"]
-  A --> T["④ Tool Registry<br/>Browser · OCR · Search · Excel · Filesystem · Database · Notification · LLM"]
-  P["⑤ Plugin<br/>Commerce · Content · Finance · Crawler · Browser"] --> A
-  P --> T
-  E["Event Bus"] --- O
-  E --- R
-  E --- A
-  M["Memory Service"] --- R
-  D["Decision Service"] --- R
+  S["Supervisor\n招聘 · 分配 · 暂停 · 恢复 · 回收"] --> R["Employee Runtime\n生命周期 · Mission · Queue"]
+  R --> B["BaseEmployee"]
+  B --> W["独立 Workspace\nMission · Memory · Knowledge · History · Queue · Decision"]
+  B --> M["Employee Message Bus"]
+  B --> K["Shared Knowledge Center"]
+  B --> H["30秒 Heartbeat"]
 ```
 
 ## 冻结边界
 
-1. Orchestrator 只创建 Mission、调用 Planner 和 Runtime，不实例化 Agent，不调用 Tool。
-2. Runtime 只通过注入的 Agent Registry 创建 Worker，不包含任何业务判断。
-3. Agent 之间禁止互相调用，只能发布或订阅 Event。
-4. Agent 只能通过 Tool Registry 使用 Browser、OCR、Search、Excel、Filesystem、Database、Notification、LLM。
-5. 所有 Agent 统一通过 Memory Service 读写；Checkpoint 也写入统一 Memory Service。
-6. Decision Service 属于 Core，只提供通用 Policy 注册与执行；业务 Policy 必须由 Plugin 注册。
-7. Plugin Manager 是唯一安装入口，负责注册 Agent、Tool、Planner、Decision Policy 和 Event Subscription。
-8. `src/` 是冻结的旧 Web 兼容层。其 Commerce 创建入口已经改为 Commerce Plugin 的 compatibility bridge；禁止继续向旧目录新增业务能力。
+1. Supervisor 只管理 `BaseEmployee`，不导入 Commerce、Research、Finance 等具体员工。
+2. 新员工只需 `class ResearchEmployee extends BaseEmployee`，不修改 Employee Runtime 或 Hammer Core。
+3. Employee Context 只暴露自己的 Workspace、Message Bus 和 Knowledge Center；不暴露 Runtime、Memory Service 或 Tool Registry。
+4. Employee 之间禁止持有或调用另一个 Employee 实例，协作必须发送 `EmployeeMessage`。
+5. 每个 Employee 拥有独立 Workspace；共享事实统一写入 Knowledge Center。
+6. Supervisor 通过 Heartbeat 判断 `HEALTHY / WAITING / NEED_HELP / STALE / DEAD`。
+7. Commerce 业务冻结在旧 Plugin 中。删除或不安装 Commerce Plugin 不影响 Employee Framework 启动。
 
-## 事件通信
+## Employee Lifecycle
 
 ```mermaid
-sequenceDiagram
-  participant B as Browser Agent
-  participant E as Event Bus
-  participant D as Decision
-  participant M as Memory
-  participant L as Logger
-  participant R as Mission Runtime
-  B->>E: browser.completed
-  E-->>D: decision.requested / policy subscriber
-  E-->>M: 统一记录
-  E-->>L: 统一日志
-  E-->>R: 更新 Mission 投影
+stateDiagram-v2
+  [*] --> CREATED
+  CREATED --> IDLE
+  IDLE --> WORKING
+  WORKING --> WAITING
+  WAITING --> WORKING
+  WORKING --> SLEEPING
+  WAITING --> SLEEPING
+  IDLE --> SLEEPING
+  SLEEPING --> RESUME
+  RESUME --> IDLE
+  RESUME --> WORKING
+  IDLE --> FINISHED
+  WORKING --> FINISHED
+  WAITING --> FINISHED
 ```
+
+非法跳转会直接拒绝，例如 `CREATED → FINISHED`。正在工作的 Employee 通过 `checkpoint()` 协作式暂停，在 Supervisor 恢复后从同一任务继续。
+
+## Employee Workspace
+
+每次招聘都会创建独立实例：
+
+```text
+EmployeeWorkspace
+├── mission
+├── memory
+├── knowledge
+├── history
+├── queue
+└── decision
+```
+
+Workspace 可由统一 Memory Service 持久化，但 Employee 本身拿不到 Memory Service。
+
+## Employee Message
+
+```text
+Research Employee
+  → EmployeeMessage { from, to, type, payload, correlationId }
+  → Message Bus
+  → Finance Employee
+  → Response Message
+  → Research Employee
+```
+
+请求期间 Research Employee 自动进入 `WAITING`，收到回复后回到 `WORKING`。
+
+## Heartbeat
+
+默认每 30 秒上报：
+
+```json
+{
+  "message": "I'm Alive",
+  "employeeId": "research-1",
+  "state": "WORKING",
+  "currentMission": { "id": "mission-1" },
+  "progress": 55,
+  "waiting": null,
+  "needHelp": false
+}
+```
+
+Supervisor 保存最后心跳。90 秒没有心跳标为 `STALE`，180 秒标为 `DEAD`；员工主动求助标为 `NEED_HELP`。
+
+## Knowledge Center
+
+共享类别固定为：
+
+- `rules`
+- `market`
+- `platform`
+- `experience`
+
+每条知识保留作者、来源和更新时间。Research 写入后，Finance、Commerce 或未来 Employee 可直接读取，不重复学习。
 
 ## 目录
 
 ```text
-hammer-os/
+hammer-os/employees/
 ├── core/
-│   ├── orchestrator/
-│   ├── runtime/
-│   ├── planner/
-│   ├── memory/
-│   ├── decision/
-│   ├── scheduler/
-│   └── eventbus/
-├── agents/
-│   ├── browser/
-│   ├── commerce/
-│   ├── content/
-│   └── customer/
-├── tools/
-├── plugins/
-│   ├── commerce/
-│   ├── content/
-│   ├── finance/
-│   ├── crawler/
-│   └── browser/
-└── apps/
-    ├── mobile/
-    ├── web/
-    └── desktop/
+│   ├── base-employee.js
+│   ├── employee-context.js
+│   ├── employee-lifecycle.js
+│   └── employee-state.js
+├── runtime/
+│   └── employee-runtime.js
+├── supervisor/
+│   └── supervisor.js
+├── workspace/
+│   └── employee-workspace.js
+├── communication/
+│   └── employee-message-bus.js
+├── heartbeat/
+│   └── employee-heartbeat-monitor.js
+├── knowledge/
+│   └── knowledge-center.js
+└── index.js
 ```
 
-## 新 Agent 验收
-
-新增 Finance Agent 时只需：
+## 新 Employee 验收
 
 ```js
-class FinanceAgent extends BaseAgent {
-  static agentType = "finance";
-  async onTask(task) {
-    return this.useTool("finance.calculate", task.input);
+class ResearchEmployee extends BaseEmployee {
+  static employeeType = "research";
+
+  async execute(mission) {
+    this.reportProgress(50, "researching");
+    return { missionId: mission.id, finding: "done" };
   }
 }
+
+const hammer = createHammerOS();
+const research = await hammer.supervisor.hire(ResearchEmployee);
+await hammer.supervisor.assign(research.id, { goal: "研究公开市场" });
 ```
 
-然后由 Finance Plugin 注册 Agent、Tool 和 Planner。Runtime、Orchestrator、Memory、Decision、EventBus 均不需要修改。
+不需要修改 Core、Runtime、Supervisor 或 Message Bus。
