@@ -59,3 +59,4 @@ hammer-os/employees/
 - 没有新增商城、用户系统、发布、下单或付款。
 - 原 Agent/Plugin Runtime 作为兼容层保留，避免破坏已验证的 V0.8 工作记录。
 - 新 Employee Framework 已能独立运行，Commerce 不再是系统启动条件。
+- Commerce Alpha 的 push/schedule 自动班次已冻结，仅保留人工触发入口。

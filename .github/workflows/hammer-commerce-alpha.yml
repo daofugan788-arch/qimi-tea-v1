@@ -1,11 +1,6 @@
 name: Hammer Commerce Employee Alpha
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "hammer-commerce-agent-v0.1/**"
-      - ".github/workflows/hammer-commerce-alpha.yml"
   workflow_dispatch:
     inputs:
       mode:
@@ -14,10 +9,6 @@ on:
         default: "full"
         type: choice
         options: [full, heartbeat, morning, evening, export]
-  schedule:
-    - cron: "37 * * * *"
-    - cron: "5 0 * * *"
-    - cron: "5 12 * * *"
 
 permissions:
   contents: read

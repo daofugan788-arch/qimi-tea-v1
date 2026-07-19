@@ -57,4 +57,4 @@ npm run build
 
 ## 兼容层
 
-原 Commerce Employee Alpha V0.8 代码和真实运行记录保留为第一个业务 Plugin，但本 Sprint 未新增选品、评分、页面、商城、用户系统或交易功能。旧 Agent Runtime 暂时保留，后续业务员工迁移到 Employee Framework 后再安全下线。
+原 Commerce Employee Alpha V0.8 代码和真实运行记录保留为第一个业务 Plugin，但自动班次已经冻结，只能人工触发。本 Sprint 未新增选品、评分、页面、商城、用户系统或交易功能。旧 Agent Runtime 暂时保留，后续业务员工迁移到 Employee Framework 后再安全下线。
