@@ -21,6 +21,7 @@ export class OpportunityReportTool {
       .sort((a, b) => decisionPriority[b.decision] - decisionPriority[a.decision] || b.score - a.score || b.profit - a.profit)
       .slice(0, 12);
     const generatedAt = new Date().toISOString();
+    const scheduled = input.missionSource === "daily-08:00";
     return {
       kind: "COMMERCE_EMPLOYEE_DAILY_REPORT",
       title: "今日机会商品日报",
@@ -43,7 +44,9 @@ export class OpportunityReportTool {
         : "调整成本或利润条件后继续搜索；不要为未达门槛商品生成发布计划。",
       evidenceRunId: input.evidenceRunId || null,
       evidenceFile: input.evidenceFile || null,
-      operationReduction: { before: 6, after: 0, reduced: 6 },
+      operationReduction: scheduled
+        ? { before: 10, after: 0, reduced: 10, reductionRate: 100 }
+        : { before: 10, after: 1, reduced: 9, reductionRate: 90 },
       notice: "Agent 只读取白名单公开页面，不登录、不发布、不下单、不付款；利润为公开样本估算，测试前保留主人确认。",
     };
   }

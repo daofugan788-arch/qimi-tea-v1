@@ -62,7 +62,7 @@ test("Commerce Employee 一条 Mission 自动完成 Search、Data、Decision、C
   assert.equal(report.firstRecommendation.name, "机会商品1");
   assert.equal(report.publishingMaterials.length, 3);
   assert.ok(report.publishingMaterials[0].customerService.stock);
-  assert.deepEqual(report.operationReduction, { before: 6, after: 0, reduced: 6 });
+  assert.deepEqual(report.operationReduction, { before: 10, after: 1, reduced: 9, reductionRate: 90 });
   const opportunities = (await hammer.memoryService.list("commerce.opportunities")).map((entry) => entry.value);
   assert.equal(opportunities.length, 4);
   for (const item of opportunities) {

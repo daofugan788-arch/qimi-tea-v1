@@ -73,6 +73,7 @@ export class CommerceAgent extends BaseAgent {
       evidenceRunId: evaluation.runId,
       evidenceFile: evaluation.evidenceFile,
       materials: evaluation.materials || [],
+      missionSource: task.mission?.metadata?.source || "owner-command",
     });
     await this.memoryService.write("commerce.daily-reports", report.date, report);
     await this.memoryService.write("commerce.employee", "latest-report", report);

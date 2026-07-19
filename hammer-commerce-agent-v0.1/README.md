@@ -18,6 +18,8 @@
 
 Commerce 仍是 Plugin；Runtime、Agent、Memory、Tool Registry 和 Decision Service 没有被业务代码替代。V0.7 不执行登录、发布、付款或交易。
 
+人工流程按“搜索、打开、记录、比较、算完整成本、判断、排序、写标题、写描述、写日报”10步计，一句话入口变为1步，减少9步（90%）；每日08:00自动任务为0步。
+
 ## 手机一句话入口
 
 ```bash
