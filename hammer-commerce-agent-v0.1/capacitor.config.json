@@ -1,0 +1,14 @@
+{
+  "appId": "com.hammer.os",
+  "appName": "Hammer OS",
+  "webDir": "dist",
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  },
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": true
+  }
+}

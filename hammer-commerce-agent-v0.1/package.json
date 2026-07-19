@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
+    "android:sync": "npm run build && cap sync android",
+    "android:apk": "npm run android:sync && cd android && ./gradlew assembleDebug",
     "preview": "vite preview --host 0.0.0.0",
     "test": "node --import tsx --test",
     "test:architecture": "node --import tsx --test tests/hammer-os.test.js",
@@ -24,6 +26,8 @@
     "employee:framework:validate": "node server/employee-framework-validation.js"
   },
   "dependencies": {
+    "@capacitor/android": "^7.6.8",
+    "@capacitor/core": "^7.6.8",
     "@sparticuz/chromium": "149.0.0",
     "@vitejs/plugin-react": "latest",
     "playwright": "1.61.1",
@@ -33,6 +37,7 @@
     "vite": "latest"
   },
   "devDependencies": {
+    "@capacitor/cli": "^7.6.8",
     "happy-dom": "^20.10.6",
     "tsx": "^4.23.1"
   }
