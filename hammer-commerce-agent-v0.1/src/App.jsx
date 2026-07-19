@@ -190,6 +190,37 @@ function HistoryView({ history, onSelect, onRun, onClose }) {
   );
 }
 
+function FavoritesView({ favorites, onToggleFavorite, onClose }) {
+  return (
+    <div className="history-layer" role="dialog" aria-modal="true" aria-label="商品收藏">
+      <button className="history-backdrop" type="button" onClick={onClose} aria-label="关闭商品收藏" />
+      <section className="history-panel favorites-panel">
+        <header><div><small>当前手机保存</small><h2>商品收藏</h2></div><button type="button" onClick={onClose}>×</button></header>
+        <div className="favorites-list">
+          {favorites.length === 0 && <p className="favorites-empty">还没有收藏商品，先执行一次任务吧。</p>}
+          {favorites.map((product) => (
+            <article className="favorite-row" key={product.id}>
+              <div className="favorite-product">
+                {product.imageUrl && <img src={product.imageUrl} alt="" loading="lazy" />}
+                <div>
+                  <b>{product.name}</b>
+                  <small>{product.source} · {formatTime(product.savedAt)}</small>
+                  <span>预计利润 {money(product.estimatedProfit, product.currency)}</span>
+                </div>
+              </div>
+              <p>{product.reason}</p>
+              <div>
+                <a href={product.sourceUrl} target="_blank" rel="noreferrer">查看公开来源 ↗</a>
+                <button type="button" onClick={() => onToggleFavorite(product)}>取消收藏</button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export default function App() {
   const restored = useMemo(() => loadLastMobileReport(), []);
   const [goal, setGoal] = useState(DEFAULT_GOAL);
@@ -199,6 +230,7 @@ export default function App() {
   const [history, setHistory] = useState(() => loadMobileHistory());
   const [favorites, setFavorites] = useState(() => loadFavorites());
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [favoritesOpen, setFavoritesOpen] = useState(false);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState("");
 
@@ -255,9 +287,14 @@ export default function App() {
       <header className="app-header">
         <div className="logo">H</div>
         <div><b>Hammer OS</b><small><i /> AI 在线</small></div>
-        <button className="history-open-button" type="button" onClick={() => setHistoryOpen(true)} disabled={running}>
-          历史 <b>{history.length}</b>
-        </button>
+        <div className="header-actions">
+          <button className="favorites-open-button" type="button" onClick={() => setFavoritesOpen(true)} disabled={running}>
+            收藏 <b>{favorites.length}</b>
+          </button>
+          <button className="history-open-button" type="button" onClick={() => setHistoryOpen(true)} disabled={running}>
+            历史 <b>{history.length}</b>
+          </button>
+        </div>
       </header>
 
       <section className="home-view">
@@ -286,6 +323,7 @@ export default function App() {
       {report && <button className="again-button" type="button" onClick={() => { setEvents([]); setReport(null); setActiveGoal(""); window.scrollTo({ top: 0, behavior: "smooth" }); }}>＋ 输入新任务</button>}
       <footer>上次完成：{report ? formatTime(report.completedAt) : "暂无"} · 结果保存在当前手机</footer>
       {historyOpen && <HistoryView history={history} onSelect={openHistoryReport} onRun={rerunHistoryMission} onClose={() => setHistoryOpen(false)} />}
+      {favoritesOpen && <FavoritesView favorites={favorites} onToggleFavorite={toggleFavorite} onClose={() => setFavoritesOpen(false)} />}
     </main>
   );
 }

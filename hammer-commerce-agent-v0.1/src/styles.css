@@ -18,9 +18,11 @@ button { -webkit-tap-highlight-color: transparent; }
 .app-header b { font-size: 15px; }
 .app-header small { display: flex; align-items: center; gap: 5px; margin-top: 3px; color: #73786e; font-size: 10px; font-weight: 750; }
 .app-header small i { width: 7px; height: 7px; border-radius: 50%; background: #58b83e; box-shadow: 0 0 0 3px #dff1d9; }
-.history-open-button { display: flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 10px; border: 1px solid #daddd4; border-radius: 11px; background: #fff; color: #555b50; font-size: 10px; font-weight: 850; }
-.history-open-button b { display: grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 999px; background: #171a15; color: #d9ff54; font-size: 9px; }
-.history-open-button:disabled { opacity: .5; }
+.header-actions { display: flex; gap: 6px; }
+.history-open-button, .favorites-open-button { display: flex; align-items: center; gap: 5px; min-height: 34px; padding: 0 8px; border: 1px solid #daddd4; border-radius: 11px; background: #fff; color: #555b50; font-size: 9px; font-weight: 850; }
+.history-open-button b, .favorites-open-button b { display: grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 999px; background: #171a15; color: #d9ff54; font-size: 9px; }
+.favorites-open-button b { background: #dff5a0; color: #466000; }
+.history-open-button:disabled, .favorites-open-button:disabled { opacity: .5; }
 
 .home-view { padding: 34px 0 24px; }
 .eyebrow, .section-label { color: #6a8509; font-size: 11px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
@@ -111,6 +113,20 @@ button { -webkit-tap-highlight-color: transparent; }
 .history-item small { margin-top: 5px; color: #8a9085; font-size: 9px; }
 .history-item i { color: #92978d; font-size: 20px; font-style: normal; }
 .history-rerun-button { align-self: stretch; padding: 0 11px; border: 0; border-radius: 11px; background: #e5f6b4; color: #425800; font-size: 9px; font-weight: 900; }
+
+.favorites-list { display: grid; gap: 9px; }
+.favorites-empty { padding: 22px; border-radius: 16px; background: #fff; color: #777d72; text-align: center; font-size: 11px; }
+.favorite-row { padding: 13px; border: 1px solid #e0e3db; border-radius: 17px; background: #fff; }
+.favorite-product { display: flex; align-items: center; gap: 11px; }
+.favorite-product img { width: 58px; height: 58px; border-radius: 12px; background: #edf0e8; object-fit: cover; }
+.favorite-product > div { display: flex; min-width: 0; flex: 1; flex-direction: column; }
+.favorite-product b { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.favorite-product small { margin-top: 4px; color: #8a9085; font-size: 9px; }
+.favorite-product span { margin-top: 5px; color: #526c05; font-size: 10px; font-weight: 900; }
+.favorite-row > p { margin: 10px 0; color: #676d62; font-size: 9px; line-height: 1.6; }
+.favorite-row > div:last-child { display: flex; align-items: center; justify-content: space-between; }
+.favorite-row a { color: #607d06; font-size: 10px; font-weight: 850; text-decoration: none; }
+.favorite-row button { min-height: 32px; padding: 0 10px; border: 0; border-radius: 10px; background: #eceee8; color: #656b60; font-size: 9px; font-weight: 850; }
 
 @media (min-width: 600px) {
   .android-app { padding-left: 28px; padding-right: 28px; }
