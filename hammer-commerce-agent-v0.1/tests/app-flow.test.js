@@ -75,6 +75,12 @@ test("Android 首页可以输入一句任务、查看执行过程并获得结果
   assert.ok(JSON.parse(localStorage.getItem("hammer-os-android-last-report")));
   assert.equal(JSON.parse(localStorage.getItem("hammer-os-android-mission-history")).length, 1);
 
+  await act(async () => { document.querySelector(".result-generate-button").click(); });
+  assert.match(document.querySelector(".content-panel").textContent, /发布资料/);
+  assert.match(document.querySelector(".content-panel").textContent, /便携商品/);
+  await act(async () => { document.querySelector(".content-panel header button").click(); });
+  assert.equal(document.querySelector(".content-panel"), null);
+
   await act(async () => { document.querySelector(".favorite-button").click(); });
   assert.match(document.querySelector(".favorite-button").textContent, /已收藏/);
   assert.equal(JSON.parse(localStorage.getItem("hammer-os-android-product-favorites")).length, 1);

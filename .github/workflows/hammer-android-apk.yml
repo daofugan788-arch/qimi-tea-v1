@@ -42,18 +42,18 @@ jobs:
           npm run build
           npx cap add android
           sed -i '/android {/a\    signingConfigs {\n        debug {\n            storeFile file("../../android-signing/hammer-debug.keystore")\n            storePassword "android"\n            keyAlias "androiddebugkey"\n            keyPassword "android"\n        }\n    }' android/app/build.gradle
-          sed -i 's/versionCode 1/versionCode 9/' android/app/build.gradle
-          sed -i 's/versionName "1.0"/versionName "1.8"/' android/app/build.gradle
+          sed -i 's/versionCode 1/versionCode 10/' android/app/build.gradle
+          sed -i 's/versionName "1.0"/versionName "1.9"/' android/app/build.gradle
       - name: Build installable APK
         run: |
           chmod +x android/gradlew
           cd android
           ./gradlew assembleDebug
       - name: Stage APK
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk Hammer-OS-Android-V1.8.apk
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk Hammer-OS-Android-V1.9.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: Hammer-OS-Android-V1.8
-          path: hammer-commerce-agent-v0.1/Hammer-OS-Android-V1.8.apk
+          name: Hammer-OS-Android-V1.9
+          path: hammer-commerce-agent-v0.1/Hammer-OS-Android-V1.9.apk
           if-no-files-found: error
           retention-days: 30
