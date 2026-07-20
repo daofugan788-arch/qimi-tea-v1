@@ -59,6 +59,7 @@ test("Android 首页可以输入一句任务、查看执行过程并获得结果
   const root = createRoot(container);
 
   await act(async () => { root.render(React.createElement(App)); });
+  assert.match(document.querySelector(".app-title").textContent, /V2.1/);
   assert.match(document.querySelector("h1").textContent, /一句任务/);
   assert.equal(document.querySelector("#mission-input").value, "帮我找今天值得卖的商品");
 
