@@ -1,5 +1,5 @@
 {
-  "appId": "com.hammer.os",
+  "appId": "com.hammer.os.mobile",
   "appName": "Hammer OS",
   "webDir": "dist",
   "plugins": {
