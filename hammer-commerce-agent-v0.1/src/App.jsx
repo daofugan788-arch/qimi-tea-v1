@@ -121,7 +121,7 @@ function MissionView({ goal, events, running }) {
   );
 }
 
-function ResultView({ report, favorites, onToggleFavorite }) {
+function ResultView({ report, favorites, onToggleFavorite, onGenerateContent }) {
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
   if (!report) return null;
@@ -174,9 +174,12 @@ function ResultView({ report, favorites, onToggleFavorite }) {
             <p className="reason">{product.reason}</p>
             <div className="product-actions">
               <a href={product.sourceUrl} target="_blank" rel="noreferrer">查看公开来源 ↗</a>
-              <button className={`favorite-button ${favorites.some((item) => item.id === product.id) ? "saved" : ""}`} type="button" onClick={() => onToggleFavorite(product)}>
-                {favorites.some((item) => item.id === product.id) ? "★ 已收藏" : "☆ 收藏"}
-              </button>
+              <span className="product-card-buttons">
+                <button className="result-generate-button" type="button" onClick={() => onGenerateContent(product)}>生成发布资料</button>
+                <button className={`favorite-button ${favorites.some((item) => item.id === product.id) ? "saved" : ""}`} type="button" onClick={() => onToggleFavorite(product)}>
+                  {favorites.some((item) => item.id === product.id) ? "★ 已收藏" : "☆ 收藏"}
+                </button>
+              </span>
             </div>
           </article>
         ))}
@@ -374,7 +377,7 @@ export default function App() {
 
       {error && <section className="error-card"><b>执行未完成</b><p>{error}</p><button type="button" onClick={() => startMission()}>重新执行</button></section>}
       <MissionView goal={activeGoal} events={events} running={running} />
-      <ResultView report={report} favorites={favorites} onToggleFavorite={toggleFavorite} />
+      <ResultView report={report} favorites={favorites} onToggleFavorite={toggleFavorite} onGenerateContent={setContentProduct} />
       {report && <button className="again-button" type="button" onClick={() => { setEvents([]); setReport(null); setActiveGoal(""); window.scrollTo({ top: 0, behavior: "smooth" }); }}>＋ 输入新任务</button>}
       <footer>上次完成：{report ? formatTime(report.completedAt) : "暂无"} · 结果保存在当前手机</footer>
       {historyOpen && <HistoryView history={history} onSelect={openHistoryReport} onRun={rerunHistoryMission} onClose={() => setHistoryOpen(false)} />}
