@@ -136,7 +136,10 @@ button { -webkit-tap-highlight-color: transparent; }
 .content-product { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
 .content-product span { padding: 5px 8px; border-radius: 999px; background: #e4f6ac; color: #3e5700; font-size: 9px; font-weight: 950; }
 .content-product b { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-.copy-content-button { width: 100%; min-height: 50px; margin-top: 10px; border: 0; border-radius: 13px; background: #171a15; color: #fff; font-size: 12px; font-weight: 900; }
+.content-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.copy-content-button, .share-content-button { width: 100%; min-height: 50px; border: 0; border-radius: 13px; font-size: 11px; font-weight: 900; }
+.copy-content-button { background: #171a15; color: #fff; }
+.share-content-button { background: #d9ff54; color: #273300; }
 .content-panel > p { margin: 10px 0 0; color: #8a9085; text-align: center; font-size: 9px; }
 
 @media (min-width: 600px) {

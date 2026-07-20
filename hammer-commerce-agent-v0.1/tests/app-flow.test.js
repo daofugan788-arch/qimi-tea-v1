@@ -97,6 +97,13 @@ test("Android 首页可以输入一句任务、查看执行过程并获得结果
   assert.match(document.querySelector(".copy-content-button").textContent, /已复制全部资料/);
   assert.match(copiedReport, /商品发布资料/);
   assert.match(copiedReport, /客服话术/);
+  await act(async () => {
+    document.querySelector(".share-content-button").click();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  });
+  assert.match(document.querySelector(".share-content-button").textContent, /已打开分享/);
+  assert.match(sharedReport.text, /商品发布资料/);
+  assert.match(sharedReport.text, /客服话术/);
   await act(async () => { document.querySelector(".content-panel header button").click(); });
   assert.equal(document.querySelector(".content-panel"), null);
 

@@ -258,11 +258,25 @@ function FavoritesView({ favorites, onToggleFavorite, onGenerateContent, onClose
 
 function ContentView({ product, onClose }) {
   const [copied, setCopied] = useState(false);
+  const [shared, setShared] = useState(false);
   const content = listingContent(product);
   async function copyContent() {
     await copyText(content);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1800);
+  }
+  async function shareContent() {
+    try {
+      await Share.share({
+        title: `${product.name} 发布资料`,
+        text: content,
+        dialogTitle: "分享商品发布资料",
+      });
+      setShared(true);
+      window.setTimeout(() => setShared(false), 1800);
+    } catch {
+      await copyContent();
+    }
   }
   return (
     <div className="history-layer" role="dialog" aria-modal="true" aria-label="商品发布资料">
@@ -271,7 +285,10 @@ function ContentView({ product, onClose }) {
         <header><div><small>根据收藏商品自动生成</small><h2>发布资料</h2></div><button type="button" onClick={onClose}>×</button></header>
         <div className="content-product"><span>商品</span><b>{product.name}</b></div>
         <pre>{content}</pre>
-        <button className="copy-content-button" type="button" onClick={copyContent}>{copied ? "✓ 已复制全部资料" : "复制全部发布资料"}</button>
+        <div className="content-actions">
+          <button className="copy-content-button" type="button" onClick={copyContent}>{copied ? "✓ 已复制全部资料" : "复制全部资料"}</button>
+          <button className="share-content-button" type="button" onClick={shareContent}>{shared ? "✓ 已打开分享" : "分享发布资料"}</button>
+        </div>
         <p>发布前请再次核对实际价格、库存和平台规则。</p>
       </section>
     </div>
