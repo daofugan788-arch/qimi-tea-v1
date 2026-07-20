@@ -41,6 +41,7 @@ jobs:
         run: |
           npm run build
           npx cap add android
+          sed -i '/android {/a\    signingConfigs {\n        debug {\n            storeFile file("../../android-signing/hammer-debug.keystore")\n            storePassword "android"\n            keyAlias "androiddebugkey"\n            keyPassword "android"\n        }\n    }' android/app/build.gradle
           sed -i 's/versionCode 1/versionCode 8/' android/app/build.gradle
           sed -i 's/versionName "1.0"/versionName "1.7"/' android/app/build.gradle
       - name: Build installable APK
