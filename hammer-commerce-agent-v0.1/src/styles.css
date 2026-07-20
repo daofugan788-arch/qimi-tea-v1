@@ -16,6 +16,8 @@ button { -webkit-tap-highlight-color: transparent; }
 .logo { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; background: #171a15; color: #d9ff54; font-weight: 950; }
 .app-header > div:nth-child(2) { display: flex; flex: 1; flex-direction: column; }
 .app-header b { font-size: 15px; }
+.app-title { display: flex; align-items: center; gap: 7px; }
+.app-title em { padding: 3px 6px; border-radius: 999px; background: #e4f6ac; color: #415900; font-size: 8px; font-style: normal; font-weight: 950; }
 .app-header small { display: flex; align-items: center; gap: 5px; margin-top: 3px; color: #73786e; font-size: 10px; font-weight: 750; }
 .app-header small i { width: 7px; height: 7px; border-radius: 50%; background: #58b83e; box-shadow: 0 0 0 3px #dff1d9; }
 .header-actions { display: flex; gap: 6px; }

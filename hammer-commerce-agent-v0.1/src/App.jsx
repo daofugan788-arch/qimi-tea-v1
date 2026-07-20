@@ -361,7 +361,7 @@ export default function App() {
     <main className="android-app">
       <header className="app-header">
         <div className="logo">H</div>
-        <div><b>Hammer OS</b><small><i /> AI 在线</small></div>
+        <div><span className="app-title"><b>Hammer OS</b><em>V2.1</em></span><small><i /> AI 在线</small></div>
         <div className="header-actions">
           <button className="favorites-open-button" type="button" onClick={() => setFavoritesOpen(true)} disabled={running}>
             收藏 <b>{favorites.length}</b>

@@ -42,19 +42,19 @@ jobs:
           npm run build
           npx cap add android
           sed -i '/android {/a\    signingConfigs {\n        debug {\n            storeFile file("../../android-signing/hammer-debug.keystore")\n            storePassword "android"\n            keyAlias "androiddebugkey"\n            keyPassword "android"\n        }\n    }' android/app/build.gradle
-          sed -i 's/versionCode 1/versionCode 11/' android/app/build.gradle
-          sed -i 's/versionName "1.0"/versionName "2.0"/' android/app/build.gradle
+          sed -i 's/versionCode 1/versionCode 12/' android/app/build.gradle
+          sed -i 's/versionName "1.0"/versionName "2.1"/' android/app/build.gradle
       - name: Build installable APK
         run: |
           chmod +x android/gradlew
           cd android
           ./gradlew assembleDebug
       - name: Stage APK
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk Hammer-OS-Android-V2.0.apk
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk Hammer-OS-Android-V2.1.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: Hammer-OS-Android-V2.0
-          path: hammer-commerce-agent-v0.1/Hammer-OS-Android-V2.0.apk
+          name: Hammer-OS-Android-V2.1
+          path: hammer-commerce-agent-v0.1/Hammer-OS-Android-V2.1.apk
           if-no-files-found: error
           retention-days: 30
       - name: Publish permanent APK download
@@ -62,5 +62,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view hammer-v2.0 || gh release create hammer-v2.0 --target "${{ github.event.pull_request.head.sha }}" --title "Hammer OS Android V2.0" --notes "可直接安装的 Hammer OS Android V2.0。"
-          gh release upload hammer-v2.0 Hammer-OS-Android-V2.0.apk --clobber
+          gh release view hammer-v2.1 || gh release create hammer-v2.1 --target "${{ github.event.pull_request.head.sha }}" --title "Hammer OS Android V2.1" --notes "修复 Android 升级后仍显示旧界面的缓存问题。"
+          gh release upload hammer-v2.1 Hammer-OS-Android-V2.1.apk --clobber
