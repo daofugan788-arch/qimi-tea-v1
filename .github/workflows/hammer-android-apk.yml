@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-apk:
@@ -57,3 +57,10 @@ jobs:
           path: hammer-commerce-agent-v0.1/Hammer-OS-Android-V2.0.apk
           if-no-files-found: error
           retention-days: 30
+      - name: Publish permanent APK download
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view hammer-v2.0 || gh release create hammer-v2.0 --target "${{ github.event.pull_request.head.sha }}" --title "Hammer OS Android V2.0" --notes "可直接安装的 Hammer OS Android V2.0。"
+          gh release upload hammer-v2.0 Hammer-OS-Android-V2.0.apk --clobber
