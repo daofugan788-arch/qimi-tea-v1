@@ -83,8 +83,16 @@ test("Android 首页可以输入一句任务、查看执行过程并获得结果
   assert.match(document.querySelector(".favorites-panel").textContent, /商品收藏/);
   assert.match(document.querySelector(".favorite-row").textContent, /便携商品/);
   assert.match(document.querySelector(".favorite-row").textContent, /预计利润/);
-  await act(async () => { document.querySelector(".favorites-panel header button").click(); });
+  await act(async () => { document.querySelector(".generate-content-button").click(); });
   assert.equal(document.querySelector(".favorites-panel"), null);
+  assert.match(document.querySelector(".content-panel").textContent, /发布资料/);
+  assert.match(document.querySelector(".content-panel").textContent, /客服话术/);
+  await act(async () => { document.querySelector(".copy-content-button").click(); });
+  assert.match(document.querySelector(".copy-content-button").textContent, /已复制全部资料/);
+  assert.match(copiedReport, /商品发布资料/);
+  assert.match(copiedReport, /客服话术/);
+  await act(async () => { document.querySelector(".content-panel header button").click(); });
+  assert.equal(document.querySelector(".content-panel"), null);
 
   await act(async () => { document.querySelector(".copy-report-button").click(); });
   assert.match(document.querySelector(".copy-report-button").textContent, /已复制/);

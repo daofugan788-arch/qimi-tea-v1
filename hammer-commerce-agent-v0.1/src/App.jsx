@@ -50,6 +50,35 @@ function reportText(report) {
   ].join("\n");
 }
 
+function listingContent(product) {
+  const title = `${product.name}｜实用好物 价格合适可直接咨询`;
+  const description = [
+    `商品：${product.name}`,
+    "",
+    `建议发布价：${money(product.marketPrice, product.currency)}`,
+    `商品卖点：${product.reason}`,
+    "",
+    "商品信息来自公开页面，成交前会再次确认实际价格、库存和细节。想看更多信息可以直接问，确认清楚再决定。",
+  ].join("\n");
+  const replies = [
+    `价格：目前参考价是 ${money(product.marketPrice, product.currency)}，确认实际成本后可以再聊。`,
+    "库存：我先帮你确认当前库存，有结果马上回复你。",
+    "发货：确认商品和收货信息后，会告诉你预计发出时间。",
+  ];
+  return [
+    "《商品发布资料》",
+    "",
+    `标题：${title}`,
+    "",
+    description,
+    "",
+    "客服话术：",
+    ...replies.map((reply) => `• ${reply}`),
+    "",
+    "图片建议：商品正面、细节、尺寸或使用场景、真实状态。",
+  ].join("\n");
+}
+
 async function copyText(text) {
   if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(text);
   const input = document.createElement("textarea");
@@ -190,7 +219,7 @@ function HistoryView({ history, onSelect, onRun, onClose }) {
   );
 }
 
-function FavoritesView({ favorites, onToggleFavorite, onClose }) {
+function FavoritesView({ favorites, onToggleFavorite, onGenerateContent, onClose }) {
   return (
     <div className="history-layer" role="dialog" aria-modal="true" aria-label="商品收藏">
       <button className="history-backdrop" type="button" onClick={onClose} aria-label="关闭商品收藏" />
@@ -211,11 +240,36 @@ function FavoritesView({ favorites, onToggleFavorite, onClose }) {
               <p>{product.reason}</p>
               <div>
                 <a href={product.sourceUrl} target="_blank" rel="noreferrer">查看公开来源 ↗</a>
-                <button type="button" onClick={() => onToggleFavorite(product)}>取消收藏</button>
+                <span>
+                  <button className="generate-content-button" type="button" onClick={() => onGenerateContent(product)}>生成发布资料</button>
+                  <button type="button" onClick={() => onToggleFavorite(product)}>取消收藏</button>
+                </span>
               </div>
             </article>
           ))}
         </div>
+      </section>
+    </div>
+  );
+}
+
+function ContentView({ product, onClose }) {
+  const [copied, setCopied] = useState(false);
+  const content = listingContent(product);
+  async function copyContent() {
+    await copyText(content);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1800);
+  }
+  return (
+    <div className="history-layer" role="dialog" aria-modal="true" aria-label="商品发布资料">
+      <button className="history-backdrop" type="button" onClick={onClose} aria-label="关闭商品发布资料" />
+      <section className="history-panel content-panel">
+        <header><div><small>根据收藏商品自动生成</small><h2>发布资料</h2></div><button type="button" onClick={onClose}>×</button></header>
+        <div className="content-product"><span>商品</span><b>{product.name}</b></div>
+        <pre>{content}</pre>
+        <button className="copy-content-button" type="button" onClick={copyContent}>{copied ? "✓ 已复制全部资料" : "复制全部发布资料"}</button>
+        <p>发布前请再次核对实际价格、库存和平台规则。</p>
       </section>
     </div>
   );
@@ -231,6 +285,7 @@ export default function App() {
   const [favorites, setFavorites] = useState(() => loadFavorites());
   const [historyOpen, setHistoryOpen] = useState(false);
   const [favoritesOpen, setFavoritesOpen] = useState(false);
+  const [contentProduct, setContentProduct] = useState(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState("");
 
@@ -323,7 +378,8 @@ export default function App() {
       {report && <button className="again-button" type="button" onClick={() => { setEvents([]); setReport(null); setActiveGoal(""); window.scrollTo({ top: 0, behavior: "smooth" }); }}>＋ 输入新任务</button>}
       <footer>上次完成：{report ? formatTime(report.completedAt) : "暂无"} · 结果保存在当前手机</footer>
       {historyOpen && <HistoryView history={history} onSelect={openHistoryReport} onRun={rerunHistoryMission} onClose={() => setHistoryOpen(false)} />}
-      {favoritesOpen && <FavoritesView favorites={favorites} onToggleFavorite={toggleFavorite} onClose={() => setFavoritesOpen(false)} />}
+      {favoritesOpen && <FavoritesView favorites={favorites} onToggleFavorite={toggleFavorite} onGenerateContent={(product) => { setFavoritesOpen(false); setContentProduct(product); }} onClose={() => setFavoritesOpen(false)} />}
+      {contentProduct && <ContentView product={contentProduct} onClose={() => setContentProduct(null)} />}
     </main>
   );
 }
